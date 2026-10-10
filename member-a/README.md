@@ -95,3 +95,31 @@ If CP-SAT returns nothing, a greedy-by-priority fallback answers (`engine: "gree
 * "Edit" a plan means adjusting weights and regenerating (CONTRACT A8); litre-by-litre manual edits are out of scope.
 * Explanations are template text from structured reason codes (no LLM).
 * Model metrics describe the synthetic data-generating process only.
+
+## Data (synthetic — disclosure)
+
+Everything is produced by a seeded generator (`A_SEED`, default 42; `scripts/generate_data.sh`; byte-identical on re-run). Full parameters: [`data/DATA_GENERATION.md`](data/DATA_GENERATION.md).
+
+* **Seed scenarios** (`data/scenarios/`): `scn_sa01_w06` (alert 2, supply 55% of shortfall), `scn_sa01_w06_severe` (alert 3, 35%), `scn_sa01_w06_mild` (alert 1, 85%). 8 areas, 4 tankers, history windows 1–5. Hidden truth in `data/truth/` is used only for `run_mae_litres`.
+* **Training set** (`data/training/{train,test}.csv`): service areas `sa_02`–`sa_41` (6–10 areas, windows 2–30); split by service area (`sa_02`–`sa_33` train: 7,482 rows; `sa_34`–`sa_41` test: 1,885 rows); `sa_01` is never trained on.
+* `expected_piped_litres` is computed from the noise-free need, so it does not leak the target.
+* **Demo property** (asserted in tests, with real model predictions): ≥ 2 far, vulnerable, late-requesting areas (`ar_02`, `ar_03`, `ar_07`) request *less* than their shortfall and carry debt; total predicted shortfall ≈ 1.77× supply; loud near areas (`ar_04`, `ar_06`) over-request. FCFS and nearest-first therefore starve the far areas while JalPriority does not.
+* Deviation from the spec's suggested process: wards have 1,800–4,800 residents so that supply, not tanker capacity, is the binding limit.
+
+## Model results (simulation only)
+
+XGBoost (`n_estimators=300, max_depth=4, lr=0.05, subsample=0.9, colsample_bytree=0.9, seed 42`) predicts `need_litres` for the coming 12-hour window; shortfall = `max(0, need − expected_piped)`. Test split (unseen service areas):
+
+| | MAE (L) | RMSE (L) |
+|---|---|---|
+| XGBoost | **883.6** | **1166.2** |
+| Last-observed baseline | 1161.7 | 1523.4 |
+
+These numbers describe the synthetic data-generating process only — **not real-world accuracy**. No tuning on the test split. Artefacts are committed in `models/`.
+
+## Status
+
+* Tests: `pytest` (unit, contract, property, e2e) and `npm run typecheck && npm test && npm run build` in `dashboard/`.
+* Docker: `backend/Dockerfile` (context `member-a`) is written; Docker is not installed on the build host, so `docker build` was not run here.
+* AWS: not deployed (no credentials). `A_STORAGE_MODE` / `A_MODEL_MODE` default to `local`; S3 / SageMaker modes fall back to local on any failure.
+* Contract questions are logged in [`CONTRACT_ISSUES.md`](CONTRACT_ISSUES.md).
