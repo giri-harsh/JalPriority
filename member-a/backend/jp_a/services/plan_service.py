@@ -33,6 +33,7 @@ from ..domain.constraints import (
 )
 from ..domain.entities import (
     Allocation,
+    Area,
     Delivery,
     PlanResult,
     PredictionRef,
@@ -154,7 +155,19 @@ def build_plan(
     routes = _routes(scenario, dispatch)
     delivered = dispatch.delivered_litres()
     deliveries = _deliveries_by_area(dispatch)
-    area_facts = [_area_facts(rec, rank[rec.area_id], delivered, scenario, problem) for rec in ranked]
+    scenario_areas = {a.area_id: a for a in scenario.areas}
+    depot_metres = {a.area_id: a.depot_metres for a in problem.areas}
+    area_facts = [
+        _area_facts(
+            rec,
+            rank[rec.area_id],
+            delivered.get(rec.area_id, 0),
+            scenario_areas[rec.area_id],
+            scenario,
+            depot_metres[rec.area_id],
+        )
+        for rec in ranked
+    ]
     plan_facts = _plan_facts(scenario, problem, dispatch, records, weights, time_limit_s)
     explanations = explain_plan(area_facts, plan_facts)
 
@@ -273,10 +286,8 @@ def _deliveries_by_area(dispatch: DispatchSolution) -> dict[str, list[Delivery]]
 
 
 def _area_facts(
-    rec: AreaPriority, rank: int, delivered: Mapping[str, int], scenario: Scenario, problem: AllocationProblem
+    rec: AreaPriority, rank: int, allocated_litres: int, area: Area, scenario: Scenario, depot_metres: int
 ) -> AreaFacts:
-    area = next(a for a in scenario.areas if a.area_id == rec.area_id)
-    area_input = next(a for a in problem.areas if a.area_id == rec.area_id)
     return AreaFacts(
         area_id=rec.area_id,
         rank=rank,
@@ -291,9 +302,9 @@ def _area_facts(
         expected_piped_litres=rec.expected_piped_litres,
         shortfall_litres=rec.shortfall_litres,
         deliverable_litres=litres_to_units(rec.shortfall_litres) * DELIVERY_UNIT_LITRES,
-        allocated_litres=delivered.get(rec.area_id, 0),
+        allocated_litres=allocated_litres,
         depot_distance_km=distance(scenario.distance_km, scenario.depot.depot_id, rec.area_id),
-        depot_metres=area_input.depot_metres,
+        depot_metres=depot_metres,
     )
 
 

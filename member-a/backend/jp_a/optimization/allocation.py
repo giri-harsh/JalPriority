@@ -19,8 +19,9 @@ Constraints:
   x_i = sum_k y[k,i] <= s_i                      (never more than the shortfall)
   sum_i y[k,i] <= C_k                            (tanker capacity)
   sum_{k,i} y[k,i] <= S                          (total tanker water)
-  sum_i 2 * d(depot, i) * z[k,i] <= R_k          (star route bound; with a metric distance matrix any tour
-                                                  over the visited set is no longer, so routes stay feasible)
+  sum_i 2 * d(depot, i) * z[k,i] <= R_k          (star route bound, d in whole metres rounded up; with a metric
+                                                  distance matrix any tour over the visited set is no longer,
+                                                  so routes stay feasible)
 
 Unmet and objective:
   u_i  = s_i - x_i,   u2_i = max(0, u_i - c_i)   (deficit below the coverage floor),   u1_i = u_i - u2_i <= c_i
@@ -42,7 +43,9 @@ Multi-worker CP-SAT may return any of several equally good solutions. When stage
 canonicalises the plan: it adds ``objective <= optimum`` and minimises a secondary tie-break objective
 (unmet units weighted by rank, so ties go to higher-priority areas, then the number of stops) with ONE worker
 and a deterministic-time budget. A single worker is deterministic, and the optimum value is unique, so
-identical inputs always yield the identical plan. If stage 2 finds nothing, the stage 1 solution is kept.
+identical inputs always yield the identical plan. Stage 2 shares the stage 1 wall-clock budget (at least 0.2 s);
+if that clock stops it first, the plan is still optimal but the choice among equally good plans may vary (this
+is logged as ``canonicalisation_time_limited``). If stage 2 finds nothing, the stage 1 solution is kept.
 
 Fallback
 --------
@@ -52,6 +55,7 @@ the star route bound. It is always feasible.
 """
 from __future__ import annotations
 
+import logging
 import math
 import time
 from collections import defaultdict
@@ -70,6 +74,7 @@ from ..domain.constraints import (
 )
 from ..domain.entities import Scenario, Weights
 from ..domain.priority import AreaPriority
+from ..logging_setup import log_event
 
 ENGINE_CP_SAT = "ortools-cp-sat"
 ENGINE_GREEDY = "greedy-fallback"
@@ -412,6 +417,13 @@ def _canonicalise(
     solver.parameters.max_deterministic_time = CANONICAL_DETERMINISTIC_TIME
     solver.parameters.max_time_in_seconds = max(CANONICAL_MIN_WALL_TIME_S, deadline - time.perf_counter())
     status = solver.solve(built.model)
+    if status != cp_model.OPTIMAL and solver.wall_time >= 0.95 * solver.parameters.max_time_in_seconds:
+        # Still an optimal plan, but which of several equally good plans is returned may now vary between runs.
+        log_event(
+            "canonicalisation_time_limited",
+            "tie-break stage stopped at its wall-clock limit before settling the canonical optimal plan",
+            level=logging.WARNING,
+        )
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
         return None
     return _extract(problem, built, solver)
