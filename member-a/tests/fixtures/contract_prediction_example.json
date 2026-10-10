@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.0",
+  "scenario_id": "scn_sa01_w06",
+  "model_version": "xgb-sa-v1",
+  "generated_at": "2026-10-10T09:15:02.050Z",
+  "latency_ms": 41,
+  "run_mae_litres": 640.0,
+  "is_simulation": true,
+  "areas": [
+    {
+      "area_id": "ar_01",
+      "predicted_need_litres": 54000,
+      "expected_piped_litres": 40000,
+      "predicted_shortfall_litres": 14000,
+      "baseline_last_need_litres": 53000,
+      "top_features": [
+        {
+          "feature": "heat_index_c",
+          "contribution_litres": 2300.0
+        },
+        {
+          "feature": "population",
+          "contribution_litres": 1900.0
+        },
+        {
+          "feature": "last_need_litres",
+          "contribution_litres": 1200.0
+        }
+      ]
+    },
+    {
+      "area_id": "ar_02",
+      "predicted_need_litres": 33000,
+      "expected_piped_litres": 24000,
+      "predicted_shortfall_litres": 9000,
+      "baseline_last_need_litres": 32000,
+      "top_features": [
+        {
+          "feature": "heat_index_c",
+          "contribution_litres": 1500.0
+        },
+        {
+          "feature": "heat_exposure",
+          "contribution_litres": 900.0
+        },
+        {
+          "feature": "mean_need_last3_litres",
+          "contribution_litres": 700.0
+        }
+      ]
+    },
+    {
+      "area_id": "ar_03",
+      "predicted_need_litres": 21000,
+      "expected_piped_litres": 15000,
+      "predicted_shortfall_litres": 6000,
+      "baseline_last_need_litres": 20500,
+      "top_features": [
+        {
+          "feature": "heat_exposure",
+          "contribution_litres": 1100.0
+        },
+        {
+          "feature": "heat_index_c",
+          "contribution_litres": 950.0
+        },
+        {
+          "feature": "alert_level",
+          "contribution_litres": 400.0
+        }
+      ]
+    }
+  ]
+}
