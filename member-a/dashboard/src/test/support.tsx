@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { vi } from "vitest";
 import type {
   DispatchPlanScreenProps,
+  Metrics,
   PlanRecord,
   PlanResult,
   SnapshotScreenProps,
@@ -22,6 +23,7 @@ export const scenarioFixture = readJson<Scenario>("contract_scenario_example.jso
 export const predictionFixture = readJson<PredictionSet>("contract_prediction_example.json");
 export const modelFixture = readJson<ModelInfo>("contract_model_info_example.json");
 export const summaryFixture = readJson<ScenarioSummary>("contract_scenario_summary_example.json");
+export const metricsFixture = readJson<Metrics>("contract_metrics_example.json");
 export const planRecordFixture = readJson<PlanRecord>("contract_plan_record_example.json");
 /** The frozen contract, two levels above member-a/dashboard. */
 export const contractMarkdownPath = resolve(HERE, "../../../../contracts/CONTRACT.md");
@@ -61,6 +63,7 @@ export function installFetchMock(options: FetchMockOptions = {}) {
 
     if (path === "/scenarios") return jsonResponse({ scenarios: options.scenarios ?? [summaryFixture] });
     if (path === "/model") return jsonResponse(modelFixture);
+    if (path === "/plans/solve") return jsonResponse(clone(planRecordFixture.result));
     const predictions = /^\/scenarios\/([^/]+)\/predictions$/.exec(path);
     if (predictions?.[1]) return jsonResponse({ ...clone(predictionFixture), scenario_id: decodeURIComponent(predictions[1]) });
     const scenario = /^\/scenarios\/([^/]+)$/.exec(path);
