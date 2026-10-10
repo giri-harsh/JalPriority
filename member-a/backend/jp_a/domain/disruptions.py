@@ -5,6 +5,7 @@ import hashlib
 import json
 import math
 from collections.abc import Iterable, Mapping
+from decimal import Decimal
 from typing import Any
 
 from ..api.errors import DisruptionInvalidError, DisruptionNotApplicableError
@@ -63,6 +64,13 @@ def validate_disruption(scenario: Scenario, dtype: str, params: Mapping[str, Any
     return {"alert_level": lvl}
 
 
+def cut_supply(supply_litres: int, fraction: float) -> int:
+    """S' = floor(S * (1 - f) / 100) * 100 evaluated in EXACT decimal arithmetic (CI-3: binary floats floor
+    e.g. 20000 * (1 - 0.9) = 1999.9999999999995 down to 1900 instead of the exact 2000)."""
+    exact = Decimal(int(supply_litres)) * (Decimal(1) - Decimal(repr(float(fraction)))) / Decimal(100)
+    return max(0, math.floor(exact) * 100)
+
+
 def derived_scenario_id(root: str, applied: Iterable[Mapping[str, Any] | AppliedDisruption]) -> str:
     """``{root}__d{k}_{h}``; k = len(applied), h = sha1 over the canonical (type, params) list, first 6 hex."""
     items = []
@@ -82,8 +90,7 @@ def apply_disruption(parent: Scenario, dtype: str, params: Mapping[str, Any], ap
             if t.tanker_id == params["tanker_id"]:
                 t.status = "unavailable"
     elif dtype == "supply_cut":
-        s = child.supply.tanker_water_available_litres
-        child.supply.tanker_water_available_litres = max(0, math.floor(s * (1 - params["fraction"]) / 100) * 100)
+        child.supply.tanker_water_available_litres = cut_supply(child.supply.tanker_water_available_litres, params["fraction"])
     elif dtype == "heat_alert":
         delta = params["alert_level"] - parent.heat.alert_level
         child.heat.alert_level = params["alert_level"]

@@ -14,8 +14,9 @@ Format: section · problem · workaround in use · proposed fix. `contracts/CONT
 
 ## CI-3 · §5.12 — float evaluation of `S·(1 − f)/100`
 - **Problem:** `floor(S·(1 − f)/100)·100` is evaluated in IEEE-754; for some `(S, f)` pairs the product lands a hair below an integer and floors one step lower than exact arithmetic would (e.g. an exact 14000 → 13900).
-- **Workaround:** A uses the literal expression `math.floor(S * (1 - f) / 100) * 100` so that it matches B's mock if B implements the formula verbatim; `tests/unit/test_disruptions.py` documents known values.
-- **Proposed fix:** specify decimal arithmetic (or "round half-up to 1e-9 before floor") in §5.12 for both sides.
+- **Concrete case:** `S = 20000, f = 0.9`: IEEE-754 gives `20000 * (1 - 0.9) = 1999.9999999999995` -> `floor(19.999…) * 100 = 1900`, exact arithmetic gives `2000`. (`f = 0.3`, the value used by INTEGRATION E14, is unaffected: 14000 either way.)
+- **Workaround:** A evaluates the formula in exact decimal arithmetic (`Decimal(S) * (1 - Decimal(repr(f))) / 100`, then floor) - the faithful reading of the formula. `tests/unit/test_disruptions.py` pins the known values. If B's mock uses plain floats the two sides can differ by 100 L for fragile fractions (e.g. 0.9); at merge, run B's mock against A for the 4 fractions in `test_supply_cut_known_values`.
+- **Proposed fix:** state in §5.12 that `S'` is computed in decimal arithmetic (or that f is a multiple of 0.01) for both sides.
 
 ## CI-4 · §5.3 — `ScenarioSummary.label` for derived scenarios
 - **Problem:** the contract defines `label` only for the example seed.
