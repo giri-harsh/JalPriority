@@ -1,0 +1,38 @@
+.importances {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 var(--jp-space);
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+}
+
+.importance {
+  display: grid;
+  grid-template-columns: minmax(8rem, 12rem) 1fr 3rem;
+  gap: var(--jp-space);
+  align-items: center;
+}
+
+.importanceName {
+  color: var(--jp-muted);
+}
+
+.importanceTrack {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--jp-border);
+}
+
+.importanceFill {
+  display: block;
+  height: 100%;
+  background: var(--jp-accent);
+}
+
+.importanceValue {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,72 @@
+.panel {
+  min-width: 0;
+  padding: calc(var(--jp-space) * 2);
+  border: 1px solid var(--jp-border);
+  border-radius: var(--jp-radius);
+}
+
+.panelDanger {
+  border-color: var(--jp-danger);
+  background: var(--jp-danger-weak);
+  color: var(--jp-danger);
+}
+
+.panelClear {
+  border-color: color-mix(in srgb, var(--jp-ok) 40%, var(--jp-surface));
+  background: color-mix(in srgb, var(--jp-ok) 10%, var(--jp-surface));
+  color: var(--jp-ok);
+}
+
+.title {
+  margin: 0 0 var(--jp-space);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.clearText {
+  margin: 0;
+  font-weight: 600;
+}
+
+.total {
+  margin: 0 0 var(--jp-space);
+  font-weight: 600;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jp-space);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.itemDanger {
+  padding: var(--jp-space) calc(var(--jp-space) * 1.5);
+  border: 1px solid color-mix(in srgb, var(--jp-danger) 40%, var(--jp-surface));
+  border-radius: var(--jp-radius);
+  background: var(--jp-surface);
+}
+
+.itemHead {
+  display: flex;
+  gap: var(--jp-space);
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.itemName {
+  font-weight: 700;
+}
+
+.itemLitres {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.itemReason {
+  margin-top: 2px;
+  font-size: 0.85rem;
+}

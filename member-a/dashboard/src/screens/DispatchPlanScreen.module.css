@@ -1,0 +1,23 @@
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: calc(var(--jp-space) * 2);
+  align-items: start;
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--jp-space) * 2);
+  min-width: 0;
+}
+
+.actions {
+  min-width: 0;
+}
+
+@media (max-width: 960px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

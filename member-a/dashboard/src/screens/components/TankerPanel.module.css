@@ -1,0 +1,101 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--jp-space) * 1.5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  padding: calc(var(--jp-space) * 1.5);
+  border: 1px solid var(--jp-border);
+  border-radius: var(--jp-radius);
+}
+
+.cardHeader {
+  display: flex;
+  gap: var(--jp-space);
+  align-items: center;
+  margin-bottom: var(--jp-space);
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--jp-space) calc(var(--jp-space) * 3);
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+}
+
+.facts dt {
+  color: var(--jp-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.facts dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.over {
+  color: var(--jp-danger);
+}
+
+.loadBar {
+  height: 6px;
+  margin-bottom: var(--jp-space);
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--jp-border);
+}
+
+.loadFill {
+  height: 100%;
+  background: var(--jp-accent);
+}
+
+.stops {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+}
+
+.stop {
+  display: grid;
+  grid-template-columns: 1.5rem 1fr auto;
+  gap: var(--jp-space);
+  align-items: baseline;
+}
+
+.stopOrder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  background: var(--jp-accent-weak);
+  color: var(--jp-accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.stopName {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.path {
+  margin: var(--jp-space) 0 0;
+  font-family: var(--jp-mono);
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}

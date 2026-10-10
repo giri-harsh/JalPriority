@@ -1,0 +1,44 @@
+.sortButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.sortButton:hover {
+  color: var(--jp-accent);
+}
+
+.sortButton:focus-visible {
+  outline: 2px solid var(--jp-accent);
+  outline-offset: 2px;
+}
+
+.sortMark {
+  display: inline-block;
+  min-width: 0.8em;
+  font-size: 0.7rem;
+}
+
+.areaName {
+  font-weight: 600;
+}
+
+.areaId {
+  font-size: 0.75rem;
+}
+
+.subtle {
+  font-size: 0.75rem;
+}
+
+.shortfall {
+  font-weight: 700;
+}
