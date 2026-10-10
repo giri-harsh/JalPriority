@@ -1,0 +1,15 @@
+.venv
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.ruff_cache
+.hypothesis
+.env
+.git
+node_modules
+dashboard
+infra
+tests
+data/derived
+*.md
+!README.md
