@@ -34,7 +34,8 @@ symmetry-broken by load (load_k >= load_k+1); this removes only mirror-image sol
 Solve and determinism
 ---------------------
 Stage 1 is the specified solve: ``max_time_in_seconds = max(0.1, time_limit_s - 0.5)``, ``num_workers = 8``,
-``random_seed = 42``, warm-started with the greedy plan as a hint. OPTIMAL maps to ``optimal``; FEASIBLE to
+``random_seed = 42``, warm-started with the greedy plan as a complete hint (trips of interchangeable tankers
+reordered by load so the hint respects the symmetry breaking). OPTIMAL maps to ``optimal``; FEASIBLE to
 ``time_limited`` when the time limit was reached, otherwise ``feasible``.
 
 Multi-worker CP-SAT may return any of several equally good solutions. When stage 1 proves optimality, stage 2
@@ -60,7 +61,13 @@ from typing import Literal
 
 from ortools.sat.python import cp_model
 
-from ..domain.constraints import DELIVERY_UNIT_LITRES, distance, km_to_metres_down, km_to_metres_up, litres_to_units
+from ..domain.constraints import (
+    DELIVERY_UNIT_LITRES,
+    distance,
+    km_to_metres_down,
+    km_to_metres_up,
+    litres_to_units,
+)
 from ..domain.entities import Scenario, Weights
 from ..domain.priority import AreaPriority
 
@@ -246,9 +253,42 @@ class _CpSatModel:
     tie_break: cp_model.LinearExprT
 
 
+def identical_tanker_groups(problem: AllocationProblem) -> list[list[int]]:
+    """Runs of consecutive tankers (by index) with equal capacity and route limit: interchangeable in the model."""
+    groups: list[list[int]] = []
+    for k, tanker in enumerate(problem.tankers):
+        if groups and _interchangeable(problem.tankers[groups[-1][-1]], tanker):
+            groups[-1].append(k)
+        else:
+            groups.append([k])
+    return groups
+
+
+def _interchangeable(a: TankerInput, b: TankerInput) -> bool:
+    return (a.capacity_units, a.route_limit_metres) == (b.capacity_units, b.route_limit_metres)
+
+
+def symmetric_hint(problem: AllocationProblem, units: Mapping[PairKey, int]) -> dict[tuple[int, int], int]:
+    """``units`` keyed by (tanker index, area index), with the trips of interchangeable tankers reordered so their
+    loads are non-increasing; otherwise the model's symmetry breaking could reject the hint."""
+    tanker_index = {t.tanker_id: k for k, t in enumerate(problem.tankers)}
+    area_index = {a.area_id: i for i, a in enumerate(problem.areas)}
+    trips: dict[int, dict[int, int]] = defaultdict(dict)
+    for (tanker_id, area_id), q in units.items():
+        if q > 0:
+            trips[tanker_index[tanker_id]][area_index[area_id]] = q
+    ordered: dict[tuple[int, int], int] = {}
+    for group in identical_tanker_groups(problem):
+        bundles = sorted((trips.get(k, {}) for k in group), key=lambda trip: -sum(trip.values()))
+        for k, bundle in zip(group, bundles, strict=True):
+            ordered.update({(k, i): q for i, q in bundle.items()})
+    return ordered
+
+
 def _build_model(problem: AllocationProblem, hint: Mapping[PairKey, int] | None) -> _CpSatModel:
     m = cp_model.CpModel()
     pairs = problem.pairs()
+    hinted = symmetric_hint(problem, hint) if hint is not None else None
     y: dict[tuple[int, int], cp_model.IntVar] = {}
     z: dict[tuple[int, int], cp_model.IntVar] = {}
     for k, i in pairs:
@@ -276,11 +316,11 @@ def _build_model(problem: AllocationProblem, hint: Mapping[PairKey, int] | None)
     if y:
         m.add(sum(y.values()) <= problem.supply_units)
 
-    # Mirror-image symmetry: consecutive identical tankers carry non-increasing loads.
-    for k in range(len(problem.tankers) - 1):
-        a, b = problem.tankers[k], problem.tankers[k + 1]
-        if (a.capacity_units, a.route_limit_metres) == (b.capacity_units, b.route_limit_metres) and by_tanker[k]:
-            m.add(loads[k] >= loads[k + 1])
+    # Mirror-image symmetry: interchangeable consecutive tankers carry non-increasing loads.
+    for group in identical_tanker_groups(problem):
+        for k, nxt in zip(group, group[1:], strict=False):
+            if by_tanker[k]:
+                m.add(loads[k] >= loads[nxt])
 
     main_terms = []
     tie_terms = []
@@ -293,18 +333,21 @@ def _build_model(problem: AllocationProblem, hint: Mapping[PairKey, int] | None)
             below_floor = m.new_int_var(0, area.floor_units, f"u2_{i}")
             m.add_max_equality(below_floor, [0, unmet - area.normal_deficit_cap])
             main_terms.append((area.floor_coef - area.priority_coef) * below_floor)
-    for (k, i), visit in z.items():
+            if hinted is not None:
+                hinted_unmet = area.shortfall_units - sum(hinted.get(p, 0) for p in by_area[i])
+                m.add_hint(below_floor, max(0, hinted_unmet - area.normal_deficit_cap))
+    for (_, i), visit in z.items():
         main_terms.append(problem.areas[i].travel_coef * visit)
         tie_terms.append(visit)
 
     main = sum(main_terms)
     m.minimize(main)
 
-    if hint:
-        for (k, i), var in y.items():
-            q = hint.get((problem.tankers[k].tanker_id, problem.areas[i].area_id), 0)
+    if hinted is not None:
+        for pair, var in y.items():
+            q = hinted.get(pair, 0)
             m.add_hint(var, q)
-            m.add_hint(z[k, i], 1 if q > 0 else 0)
+            m.add_hint(z[pair], 1 if q > 0 else 0)
     return _CpSatModel(model=m, y=y, z=z, main=main, tie_break=sum(tie_terms))
 
 

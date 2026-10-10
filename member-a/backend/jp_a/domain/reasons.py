@@ -125,6 +125,7 @@ class PlanFacts:
     n_areas: int
     solver_status: str
     time_limit_s: float | None
+    route_dropped: frozenset[str] = frozenset()  # areas whose stop was cut to keep a sequenced trip in its limit
 
     @property
     def time_limited(self) -> bool:
@@ -168,8 +169,9 @@ def unmet_cause(area: AreaFacts, plan: PlanFacts) -> str | None:
     """The single cause of an area's unmet litres (``None`` when nothing is unmet).
 
     Checked in order: no water at all, no tanker at all, a sub-100 L remainder, an area no tanker can reach
-    even alone, the total water bound binding, all available capacity used, no tanker that could add the area
-    within its route bound, an extra stop not worth its travel cost, and finally lower relative priority.
+    even alone (or whose stop was cut in route repair), the total water bound binding, all available capacity
+    used, no tanker that could add the area within its route bound, an extra stop not worth its travel cost,
+    and finally lower relative priority.
     """
     if area.unmet_litres == 0:
         return None
@@ -179,7 +181,7 @@ def unmet_cause(area: AreaFacts, plan: PlanFacts) -> str | None:
         return "TANKER_CAPACITY_LIMIT"
     if is_unit_remainder(area):
         return "LOWER_RELATIVE_PRIORITY"
-    if not any(t.can_ever_reach(area) for t in plan.tankers):
+    if area.area_id in plan.route_dropped or not any(t.can_ever_reach(area) for t in plan.tankers):
         return "ROUTE_LIMIT"
     if plan.allocated_units >= plan.supply_units:
         return "SUPPLY_EXHAUSTED"

@@ -95,6 +95,52 @@ def train_synthetic_model(base: Path) -> tuple[Path, dict[str, Any]]:
     return models_dir, meta
 
 
+MEMBER_A_DIR = Path(__file__).resolve().parents[2]
+REAL_DATA_DIR = MEMBER_A_DIR / "data"
+REAL_MODELS_DIR = MEMBER_A_DIR / "models"
+SEED_SCENARIO_IDS = ("scn_sa01_w06", "scn_sa01_w06_severe", "scn_sa01_w06_mild")
+
+
+def copy_real_data(dst: Path) -> Path:
+    """Copy the committed seed scenarios, truth files and labels into ``dst`` (an isolated A_DATA_DIR).
+
+    Endpoint tests that create derived scenarios write under ``dst/derived`` and never touch ``data/``.
+    """
+    for sub in ("scenarios", "truth"):
+        (dst / sub).mkdir(parents=True, exist_ok=True)
+        for src in sorted((REAL_DATA_DIR / sub).glob("*.json")):
+            (dst / sub / src.name).write_bytes(src.read_bytes())
+    labels = REAL_DATA_DIR / "labels.json"
+    if labels.is_file():
+        (dst / "labels.json").write_bytes(labels.read_bytes())
+    (dst / "derived").mkdir(exist_ok=True)
+    return dst
+
+
+def widen_scenario(data: dict, scenario_id: str, n_areas: int) -> dict:
+    """A copy of a scenario dict grown to ``n_areas`` by cloning existing areas (new ids, scaled population).
+
+    Each clone sits 0.5 km from its template, so the distance matrix stays complete and symmetric.
+    """
+    widened = copy.deepcopy(data)
+    widened["scenario_id"] = scenario_id
+    templates = list(widened["areas"])
+    dist = widened["distance_km"]
+    for i in range(len(templates), n_areas):
+        template = templates[i % len(templates)]
+        clone = copy.deepcopy(template)
+        clone["area_id"] = f"ar_{i + 1:02d}"
+        clone["population"] = int(template["population"] * 1.1)
+        dist[clone["area_id"]] = dict(dist[template["area_id"]])
+        for node, row in dist.items():
+            if node != clone["area_id"]:
+                row[clone["area_id"]] = dist[template["area_id"]][node] if node != template["area_id"] else 0.5
+        dist[clone["area_id"]][template["area_id"]] = 0.5
+        dist[clone["area_id"]][clone["area_id"]] = 0.0
+        widened["areas"].append(clone)
+    return widened
+
+
 def load_scenario_fixture() -> dict:
     return json.loads((FIXTURES_DIR / "contract_scenario_example.json").read_text(encoding="utf-8"))
 

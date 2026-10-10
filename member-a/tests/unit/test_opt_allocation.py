@@ -1,11 +1,13 @@
 """M6: CP-SAT allocation model, canonical (deterministic) optimum and the greedy fallback."""
 from __future__ import annotations
 
+import math
 import random
 from collections import defaultdict
 
 import pytest
 
+from jp_a.domain.entities import Weights
 from jp_a.domain.priority import compute_area_priorities, rank_areas
 from jp_a.optimization.allocation import (
     ENGINE_CP_SAT,
@@ -14,9 +16,11 @@ from jp_a.optimization.allocation import (
     AreaInput,
     TankerInput,
     build_problem,
+    identical_tanker_groups,
     objective_value,
     solve_cpsat,
     solve_greedy,
+    symmetric_hint,
 )
 
 from .opt_helpers import golden_inputs, make_case
@@ -54,8 +58,6 @@ def _assert_feasible(problem: AllocationProblem, units: dict) -> None:
 
 def _hand_problem(supply_units: int, floor_penalty: float, coverage_floor: float = 0.25) -> AllocationProblem:
     """Area A (p = 3.0, 10,000 L) and area B (p = 1.2, 4,000 L), one big tanker, no travel cost."""
-    import math
-
     def area(area_id: str, p: float, sf: int) -> AreaInput:
         units = sf // 100
         cap = min(units, math.ceil(round((1 - coverage_floor) * sf / 100, 9)))
@@ -156,8 +158,6 @@ def test_zero_supply_allocates_nothing():
 @pytest.mark.parametrize("seed", range(6))
 def test_random_problems_are_feasible_and_cp_sat_beats_greedy(seed):
     scenario, prediction, debt = make_case(seed, n_areas=10, n_tankers=4, supply_ratio=random.Random(seed).uniform(0.3, 1.2))
-    from jp_a.domain.entities import Weights
-
     ranked = rank_areas(compute_area_priorities(scenario, prediction, Weights(), debt))
     problem = build_problem(ranked, scenario, Weights(), coverage_floor=0.25, floor_penalty=3.0)
     greedy = solve_greedy(problem)
@@ -173,8 +173,6 @@ def test_identical_tankers_and_flat_priorities_give_a_canonical_plan():
     scenario, prediction, debt = make_case(11, n_areas=10, n_tankers=4)
     tankers = [t.model_copy(update={"capacity_litres": 10_000}) for t in scenario.tankers]
     scenario = scenario.model_copy(update={"tankers": tankers})
-    from jp_a.domain.entities import Weights
-
     flat = Weights(urgency=0.0, debt=0.0, vulnerability=0.0, travel=0.0)
     ranked = rank_areas(compute_area_priorities(scenario, prediction, flat, debt))
     problem = build_problem(ranked, scenario, flat, coverage_floor=0.25, floor_penalty=3.0)
@@ -183,10 +181,39 @@ def test_identical_tankers_and_flat_priorities_give_a_canonical_plan():
     _assert_feasible(problem, results[0])
 
 
+def test_identical_tanker_groups_and_symmetric_hint():
+    problem = _golden_problem()
+    twins = AllocationProblem(
+        areas=problem.areas,
+        tankers=(
+            TankerInput("tk_01", 100, 60_000),
+            TankerInput("tk_02", 100, 60_000),
+            TankerInput("tk_03", 120, 60_000),
+            TankerInput("tk_04", 100, 60_000),
+        ),
+        supply_units=problem.supply_units,
+    )
+    assert identical_tanker_groups(twins) == [[0, 1], [2], [3]]  # only consecutive runs are interchangeable
+    hint = {("tk_01", "ar_02"): 30, ("tk_02", "ar_03"): 60, ("tk_02", "ar_01"): 20, ("tk_04", "ar_01"): 5}
+    # tk_02's trip (80 units) is heavier than tk_01's (30), so the two trips swap; tk_04 stays put.
+    assert symmetric_hint(twins, hint) == {(0, 0): 60, (0, 2): 20, (1, 1): 30, (3, 2): 5}
+
+
+def test_greedy_hint_with_interchangeable_tankers_is_accepted():
+    scenario, prediction, debt = make_case(31, n_areas=10, n_tankers=4)
+    same = [t.model_copy(update={"capacity_litres": 10_000}) for t in scenario.tankers]
+    scenario = scenario.model_copy(update={"tankers": same})
+    ranked = rank_areas(compute_area_priorities(scenario, prediction, Weights(), debt))
+    problem = build_problem(ranked, scenario, Weights(), coverage_floor=0.25, floor_penalty=3.0)
+    greedy = solve_greedy(problem)
+    outcome = solve_cpsat(problem, 0.1, hint=greedy.units)
+    assert outcome is not None  # the (reordered) hint is a complete feasible solution
+    assert outcome.objective <= greedy.objective
+    _assert_feasible(problem, outcome.units)
+
+
 def test_tiny_time_limit_still_returns_a_feasible_plan_or_none():
     scenario, prediction, debt = make_case(3, n_areas=10, n_tankers=4)
-    from jp_a.domain.entities import Weights
-
     ranked = rank_areas(compute_area_priorities(scenario, prediction, Weights(), debt))
     problem = build_problem(ranked, scenario, Weights(), coverage_floor=0.25, floor_penalty=3.0)
     outcome = solve_cpsat(problem, 0.1, hint=solve_greedy(problem).units)

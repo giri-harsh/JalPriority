@@ -40,8 +40,8 @@ from ..domain.entities import (
     Route,
     RouteStop,
     Scenario,
-    SolverInfo,
     SolveRequest,
+    SolverInfo,
     Totals,
     Unserved,
     Weights,
@@ -337,4 +337,5 @@ def _plan_facts(
         n_areas=len(records),
         solver_status=dispatch.status,
         time_limit_s=time_limit_s,
+        route_dropped=dispatch.dropped,
     )

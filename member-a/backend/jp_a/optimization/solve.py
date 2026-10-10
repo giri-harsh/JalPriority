@@ -7,7 +7,8 @@ Time budget, for a request limit ``time_limit_s`` of which ``elapsed_s`` was alr
     ``time_limit_s + 0.5`` after the request started,
 so the response stays inside the contract's ``time_limit_s + 1.0`` seconds.
 
-A time limit is never an error: if CP-SAT finds nothing (or raises), the greedy plan is used.
+A time limit is never an error: if CP-SAT finds nothing (or raises), or stops at its time limit with a plan worse
+than the greedy one, the greedy plan is used (engine ``greedy-fallback``, status ``heuristic``).
 
 Route repair: the star bound guarantees route feasibility only for metric distance matrices. If a sequenced
 trip still exceeds ``max_route_km + 0.01`` (F-15), its lowest-priority stop is dropped (that water becomes
@@ -62,7 +63,7 @@ class DispatchSolution:
     engine: str
     status: AllocationStatus
     trips: dict[str, TankerTrip]  # tankers with at least one stop, keyed by tanker_id
-    repaired: bool
+    dropped: frozenset[str]  # areas that lost a stop in route repair
 
     def delivered_litres(self) -> dict[str, int]:
         totals: dict[str, int] = defaultdict(int)
@@ -78,7 +79,11 @@ def solver_budget_s(time_limit_s: float, elapsed_s: float = 0.0) -> float:
 
 
 def allocate(problem: AllocationProblem, time_limit_s: float, *, elapsed_s: float = 0.0) -> AllocationOutcome:
-    """CP-SAT allocation with the greedy plan as warm start and as fallback."""
+    """CP-SAT allocation with the greedy plan as warm start and as fallback.
+
+    The greedy plan is returned when CP-SAT finds nothing, raises, or stops at its time limit with a plan that
+    scores worse than the greedy one (the contract's "best feasible plan" on a time limit).
+    """
     started = time.perf_counter()
     budget = solver_budget_s(time_limit_s, elapsed_s)
     greedy: AllocationOutcome | None
@@ -94,12 +99,22 @@ def allocate(problem: AllocationProblem, time_limit_s: float, *, elapsed_s: floa
     except Exception as exc:  # noqa: BLE001 - any solver crash degrades to the greedy plan
         log_event("cpsat_failed", f"CP-SAT raised, using greedy fallback: {exc!r}", level=logging.WARNING)
         outcome = None
-    if outcome is not None:
-        return outcome
+
     if greedy is None:
-        raise OptimizationError("neither CP-SAT nor the greedy fallback produced a plan")
-    log_event("greedy_fallback", "CP-SAT found no solution in time; using greedy fallback", level=logging.WARNING)
-    return greedy
+        if outcome is None:
+            raise OptimizationError("neither CP-SAT nor the greedy fallback produced a plan")
+        return outcome
+    if outcome is None:
+        log_event("greedy_fallback", "CP-SAT found no solution in time; using greedy fallback", level=logging.WARNING)
+        return greedy
+    if outcome.status != "optimal" and greedy.objective < outcome.objective:
+        log_event(
+            "greedy_better",
+            f"CP-SAT stopped at {outcome.objective}, above the greedy plan's {greedy.objective}; using greedy",
+            level=logging.WARNING,
+        )
+        return greedy
+    return outcome
 
 
 def build_trips(
@@ -108,8 +123,11 @@ def build_trips(
     rank: Mapping[str, int],
     *,
     routing_deadline: float,
-) -> tuple[dict[str, TankerTrip], bool]:
-    """Sequence every tanker's stops and repair any trip over its route limit. Returns ``(trips, repaired)``."""
+) -> tuple[dict[str, TankerTrip], frozenset[str]]:
+    """Sequence every tanker's stops and repair any trip over its route limit.
+
+    Returns ``(trips, dropped)``: the trips of tankers that still have stops, and the areas that lost a stop.
+    """
     depot_id = scenario.depot.depot_id
     limits = {t.tanker_id: t.max_route_km for t in scenario.tankers}
     litres_by_tanker: dict[str, dict[str, int]] = defaultdict(dict)
@@ -118,7 +136,7 @@ def build_trips(
 
     long_trips = sum(1 for stops in litres_by_tanker.values() if len(stops) > EXACT_MAX_STOPS)
     trips: dict[str, TankerTrip] = {}
-    repaired = False
+    dropped: set[str] = set()
     for tanker_id in sorted(litres_by_tanker):
         stops = dict(litres_by_tanker[tanker_id])
         while stops:
@@ -130,15 +148,15 @@ def build_trips(
             if route_km(build_path(depot_id, order), scenario.distance_km) <= limits[tanker_id] + ROUTE_TOLERANCE_KM:
                 trips[tanker_id] = TankerTrip(tanker_id, tuple((a, stops[a]) for a in order))
                 break
-            dropped = max(stops, key=lambda a: (rank[a], a))
+            victim = max(stops, key=lambda a: (rank[a], a))
             log_event(
                 "route_repaired",
-                f"{tanker_id} exceeds its route limit; dropping stop {dropped}",
+                f"{tanker_id} exceeds its route limit; dropping stop {victim}",
                 level=logging.WARNING,
             )
-            del stops[dropped]
-            repaired = True
-    return trips, repaired
+            del stops[victim]
+            dropped.add(victim)
+    return trips, frozenset(dropped)
 
 
 def solve_dispatch(
@@ -152,8 +170,8 @@ def solve_dispatch(
     """Allocation + routing for one window (see the module docstring)."""
     request_started = time.perf_counter() - elapsed_s
     outcome = allocate(problem, time_limit_s, elapsed_s=elapsed_s)
-    trips, repaired = build_trips(
+    trips, dropped = build_trips(
         outcome, scenario, rank, routing_deadline=request_started + time_limit_s + ROUTING_GRACE_S
     )
-    status: AllocationStatus = "feasible" if repaired and outcome.status == "optimal" else outcome.status
-    return DispatchSolution(engine=outcome.engine, status=status, trips=trips, repaired=repaired)
+    status: AllocationStatus = "feasible" if dropped and outcome.status == "optimal" else outcome.status
+    return DispatchSolution(engine=outcome.engine, status=status, trips=trips, dropped=dropped)

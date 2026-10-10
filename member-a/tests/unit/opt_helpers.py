@@ -223,7 +223,8 @@ def assert_plan_invariants(
     for r in routes:
         t = tankers[r["tanker_id"]]
         assert (r["capacity_litres"], r["max_route_km"]) == (t.capacity_litres, t.max_route_km)
-        km = round(sum(dist[x][y] for x, y in zip(r["path"], r["path"][1:])), 2) if r["path"] else 0.0  # F-8
+        legs = zip(r["path"], r["path"][1:], strict=False)
+        km = round(sum(dist[x][y] for x, y in legs), 2) if r["path"] else 0.0  # F-8
         assert r["route_km"] == km
         assert km <= t.max_route_km + 0.01
         travel += km
