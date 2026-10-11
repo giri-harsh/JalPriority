@@ -1,6 +1,6 @@
 # PROGRESS.md — Member A (resume file: read this + `git log --oneline -15` first)
 
-_Last updated: M0/M1 done by LEAD; wave-1 agents (DATA, ML, OPT, UI) about to launch._
+_Last updated: all milestones done (M11/M12 caveats: image simulated, AWS not deployed); A-M2b decorrelated request order; SUMMARY_A.md written. pytest 1183 collected (1180 passed, 3 skipped), vitest 150._
 
 ## Milestones (MEMBER_A §4)
 | M | Deliverable | Owner | Status |

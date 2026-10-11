@@ -164,3 +164,8 @@ ar_05 9,418, ar_06 212, ar_07 21,308, ar_08 184.
 | `scn_sa01_w06` | 2 | 24,400 | 44,403 | 0.550 |
 | `scn_sa01_w06_severe` | 3 | 18,300 | 52,402 | 0.349 |
 | `scn_sa01_w06_mild` | 1 | 31,600 | 37,189 | 0.850 |
+
+
+## Request overrides (added with commit A-M2b)
+
+`DEMO_REQUEST_OVERRIDES = {3: (1.45, 215), 2: (0.70, 10)}` in `generator.py` (key = distance rank, value = (voice, request lead in minutes before window start)) applies to the sa_01 seeds only. Rank 3 (`ar_01`, 5.8 km) is loud (1.45x its shortfall) and requests earliest (02:25); rank 2 (`ar_08`, 4.57 km) is quiet (0.70x) and requests at 05:50, before the far wards. This makes FCFS order differ from nearest-first order. The far, vulnerable, late wards (ranks 5-7) are untouched. Voice is latent, so the training CSVs, truth files and the model are unchanged. Where the demo table above lists `ar_04` (03:03) as the earliest requester, the actual earliest is now `ar_01` at 02:25.
