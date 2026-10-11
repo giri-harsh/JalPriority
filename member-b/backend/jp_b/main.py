@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 import secrets
+from jp_b.request_context import request_id_var
 import logging
 from contextvars import ContextVar
 
@@ -43,8 +44,12 @@ async def request_id_middleware(request: Request, call_next):
     if not req_id:
         req_id = f"req_{secrets.token_hex(6)}"
     request.state.request_id = req_id
+    token = request_id_var.set(req_id)
 
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    finally:
+        request_id_var.reset(token)
     response.headers["X-Request-ID"] = req_id
     return response
 

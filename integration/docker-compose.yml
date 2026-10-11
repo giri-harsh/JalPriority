@@ -1,0 +1,50 @@
+name: jalpriority
+services:
+  jp-a-api:
+    build:
+      context: ../member-a
+      dockerfile: backend/Dockerfile
+    image: jp-a-api:local
+    env_file: [.env]
+    environment:
+      A_PORT: "8001"
+      A_AUTH_DISABLED: "false"
+      SHARED_ENV: docker
+    ports: ["8001:8001"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8001/a/v1/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  jp-b-api:
+    build:
+      context: ../member-b
+      dockerfile: backend/Dockerfile
+    image: jp-b-api:local
+    env_file: [.env]
+    environment:
+      B_PORT: "8002"
+      B_USE_MOCK_A: "false"
+      B_UPSTREAM_A_URL: http://jp-a-api:8001
+      B_SQLITE_PATH: /app/var/jp_b.sqlite3
+      SHARED_ENV: docker
+    volumes: ["b-var:/app/var"]
+    ports: ["8002:8002"]
+    depends_on:
+      jp-a-api: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8002/b/v1/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  jp-gateway:
+    build:
+      context: ..
+      dockerfile: integration/gateway/Dockerfile
+    image: jp-gateway:local
+    ports: ["8080:8080"]
+    depends_on:
+      jp-a-api: {condition: service_healthy}
+      jp-b-api: {condition: service_healthy}
+volumes:
+  b-var: {}

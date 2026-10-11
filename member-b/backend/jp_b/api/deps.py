@@ -14,7 +14,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_
     # Ensure role is one of dispatcher or admin
     role = payload.get("role")
     if role not in ["dispatcher", "admin"]:
-        raise APIError("UNAUTHORIZED", status_code=403, message="Insufficient permissions")
+        raise APIError("FORBIDDEN", status_code=403, message="Insufficient permissions")
     
     return payload
 

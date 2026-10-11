@@ -1,4 +1,5 @@
 import httpx
+from jp_b.request_context import request_id_var
 import logging
 import secrets
 from typing import Dict, List, Any, Optional, Union
@@ -79,6 +80,7 @@ class AHttpClient:
         request_id: Optional[str] = None
     ) -> Any:
         url = f"{self._base_url}{path}"
+        request_id = request_id or request_id_var.get()
         headers = self._headers(request_id) if require_auth else {"Accept": "application/json"}
         if request_id:
             headers["X-Request-ID"] = request_id

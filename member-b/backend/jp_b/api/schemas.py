@@ -1,6 +1,15 @@
-from pydantic import BaseModel, ConfigDict, Field
-from typing import List, Optional, Dict, Any, Literal, Union
-from datetime import datetime
+from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
+from typing import Annotated, List, Optional, Dict, Any, Literal, Union
+from datetime import datetime, timezone
+
+
+def _iso_ms_z(value: datetime) -> str:
+    """CONTRACT 4.3: UTC, millisecond precision, Z suffix (pydantic would drop '.000')."""
+    dt = value.astimezone(timezone.utc) if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    return dt.strftime("%Y-%m-%dT%H:%M:%S.") + f"{dt.microsecond // 1000:03d}Z"
+
+
+UtcDatetime = Annotated[datetime, PlainSerializer(_iso_ms_z, return_type=str, when_used="json")]
 
 class Weights(BaseModel):
     urgency: float = Field(default=1.0, ge=0.0, le=5.0)
@@ -46,15 +55,15 @@ class AreaInfo(BaseModel):
     heat_exposure: float
     expected_piped_litres: int
     requested_litres: int
-    request_time: datetime
+    request_time: UtcDatetime
     last_delivery_litres: int
-    last_delivery_at: Optional[datetime]
+    last_delivery_at: Optional[UtcDatetime]
     history: List[AreaHistory]
 
 class DisruptionApplied(BaseModel):
     type: str
     params: Dict[str, Any]
-    applied_at: datetime
+    applied_at: UtcDatetime
 
 class Scenario(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -65,7 +74,7 @@ class Scenario(BaseModel):
     service_area_id: str
     service_area_name: str
     window_index: int
-    window_start: datetime
+    window_start: UtcDatetime
     window_hours: int = 12
     is_synthetic: bool = True
     seed: int
@@ -110,7 +119,7 @@ class PredictionSet(BaseModel):
     schema_version: str = "1.0"
     scenario_id: str
     model_version: str
-    generated_at: datetime
+    generated_at: UtcDatetime
     latency_ms: int
     run_mae_litres: Optional[float]
     is_simulation: bool = True
@@ -129,7 +138,7 @@ class ModelInfo(BaseModel):
     
     schema_version: str = "1.0"
     model_version: str
-    trained_at: datetime
+    trained_at: UtcDatetime
     train_rows: int
     test_rows: int
     target: str
@@ -228,7 +237,7 @@ class PlanResult(BaseModel):
     scenario_id: str
     service_area_id: str
     window_index: int
-    generated_at: datetime
+    generated_at: UtcDatetime
     weights: Weights
     solver: SolverInfo
     prediction: PredictionInfo
@@ -254,7 +263,7 @@ class DecisionInfo(BaseModel):
     decision: Literal["approved", "edited", "rejected"]
     officer_id: str
     note: Optional[str]
-    decided_at: datetime
+    decided_at: UtcDatetime
     next_plan_id: Optional[str]
 
 class Disruption(BaseModel):
@@ -267,7 +276,7 @@ class PlanRecord(BaseModel):
     schema_version: str = "1.0"
     plan_id: str
     status: Literal["recommended", "approved", "edited", "rejected", "superseded"]
-    created_at: datetime
+    created_at: UtcDatetime
     created_by: str
     scenario_id: str
     service_area_id: str
@@ -286,7 +295,7 @@ class Event(BaseModel):
     schema_version: str = "1.0"
     event_id: str
     name: str
-    ts: datetime
+    ts: UtcDatetime
     officer_id: str
     scenario_id: Optional[str]
     props: Dict[str, Any]
@@ -366,7 +375,7 @@ class AuditEntry(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     audit_id: str
-    ts: datetime
+    ts: UtcDatetime
     officer_id: str
     action: str
     plan_id: Optional[str] = None
@@ -405,7 +414,7 @@ class WeightsResponse(BaseModel):
 
     service_area_id: str
     weights: Weights
-    updated_at: datetime
+    updated_at: UtcDatetime
     updated_by: str
     flags: Dict[str, bool]
     defaults: Weights
@@ -448,7 +457,7 @@ class ComparisonResponse(BaseModel):
     schema_version: str = "1.0"
     scenario_id: str
     weights: Weights
-    generated_at: datetime
+    generated_at: UtcDatetime
     is_simulation: bool = True
     plan_id: str
     results: Dict[str, PlanResult]
