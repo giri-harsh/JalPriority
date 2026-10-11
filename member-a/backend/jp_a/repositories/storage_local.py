@@ -102,12 +102,22 @@ class LocalStorage:
 
 
 def make_storage(settings) -> StorageBackend:
-    """``local`` -> LocalStorage(A_DATA_DIR). ``s3`` is milestone M12: until then it falls back to local."""
-    if settings.a_storage_mode == "s3":
-        log_event(
-            "storage_fallback",
-            "A_STORAGE_MODE=s3 is not available yet; using local storage",
-            level=logging.WARNING,
-            data_dir=str(settings.a_data_dir),
-        )
-    return LocalStorage(settings.a_data_dir)
+    """``local`` -> LocalStorage(A_DATA_DIR). ``s3`` -> S3Storage (seeded from the local data dir for documents
+    that are not in the bucket yet); any problem (no bucket, no credentials, boto3 error) falls back to local."""
+    local = LocalStorage(settings.a_data_dir)
+    if getattr(settings, "a_storage_mode", "local") == "s3":
+        try:
+            from .storage_s3 import make_s3_storage
+
+            s3_storage = make_s3_storage(settings, seed_storage=local)
+        except Exception as exc:  # noqa: BLE001 - the local default must never break
+            log_event(
+                "storage_fallback",
+                f"S3 storage could not be set up ({type(exc).__name__}); using local storage",
+                level=logging.WARNING,
+                data_dir=str(settings.a_data_dir),
+            )
+            s3_storage = None
+        if s3_storage is not None:
+            return s3_storage
+    return local

@@ -102,6 +102,24 @@ def _parse_artefacts(loader: ModelLoader) -> LoadedModel:
     return LoadedModel(booster=booster, meta=meta, info=info)
 
 
+class _BytesLoader:
+    source = "remote artefacts"
+
+    def __init__(self, meta: bytes, booster: bytearray):
+        self._meta, self._booster = meta, booster
+
+    def read_meta(self) -> bytes:
+        return self._meta
+
+    def read_booster(self) -> bytearray:
+        return self._booster
+
+
+def _validate_artefacts(meta: bytes, booster: bytearray) -> None:
+    """Parse remote artefacts exactly like the real load would; raises ModelUnavailableError when unusable."""
+    _parse_artefacts(_BytesLoader(meta, booster))
+
+
 class ModelRepository:
     """Loads the trained booster once (thread-safe) and serves ModelInfo and predictions with SHAP contributions."""
 
@@ -113,19 +131,39 @@ class ModelRepository:
         self._predict_lock = threading.Lock()
 
     def _default_loader(self) -> ModelLoader:
+        """Pick the artefact source from ``A_MODEL_MODE``; ``local`` is the default and the universal fallback."""
+        local = LocalModelLoader(self.settings.a_models_dir)
         mode = getattr(self.settings, "a_model_mode", "local")
-        if mode != "local":
+        if mode == "local":
+            return local
+        remote = None
+        try:
+            # Imported lazily: the AWS modules are optional and must never be needed for the local default.
+            if mode == "s3":
+                from .storage_s3 import build_s3_model_loader
+
+                remote = build_s3_model_loader(self.settings)
+            elif mode == "sagemaker_endpoint":
+                from .sagemaker_client import build_sagemaker_model_loader
+
+                remote = build_sagemaker_model_loader(self.settings)
+        except Exception as exc:  # noqa: BLE001 - never let AWS setup break startup
             log_event(
                 "model_mode_fallback",
-                f"A_MODEL_MODE={mode} is not enabled in this build; using local model artefacts",
+                f"A_MODEL_MODE={mode} could not be set up ({type(exc).__name__}); using local model artefacts",
                 level=logging.WARNING,
                 requested_mode=mode,
             )
-        return LocalModelLoader(self.settings.a_models_dir)
+        if remote is None:
+            return local
+        from .storage_s3 import FallbackModelLoader
+
+        return FallbackModelLoader(remote, local, requested_mode=mode, validate=_validate_artefacts)
 
     @property
     def active_mode(self) -> str:
-        return "local"
+        """The artefact source in effect: ``local`` unless a remote loader is configured and has not fallen back."""
+        return str(getattr(self._loader, "active_mode", "local"))
 
     def load(self) -> None:
         """Load artefacts once. Raises ModelUnavailableError if missing or corrupt; a later call retries."""
