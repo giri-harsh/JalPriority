@@ -1,5 +1,6 @@
 # SAM CLI defaults for the JalPriority AI Member A stack. NOT deployed: no AWS credentials were available.
 # From member-a/:
+#   cfn-lint -t infra/template.yaml          (offline; also run by tests/unit/test_aws_template.py)
 #   sam build -t infra/template.yaml
 #   sam deploy --config-file infra/samconfig.toml --parameter-overrides SharedJwtSecret=<secret>
 version = 0.1
@@ -11,6 +12,7 @@ stack_name = "jalpriority-a"
 stack_name = "jalpriority-a"
 region = "ap-south-1"
 resolve_image_repos = true
+resolve_s3 = true
 capabilities = "CAPABILITY_IAM"
 confirm_changeset = true
 fail_on_empty_changeset = false

@@ -117,6 +117,20 @@ XGBoost (`n_estimators=300, max_depth=4, lr=0.05, subsample=0.9, colsample_bytre
 
 These numbers describe the synthetic data-generating process only — **not real-world accuracy**. No tuning on the test split. Artefacts are committed in `models/`.
 
+## Performance (`scripts/perf_report.py`, full table in `scripts/perf_report.md`)
+
+Real app in-process, auth enabled, 3 seeds + 10 random 10-area/4-tanker scenarios, 16-CPU Windows host. All solves were CP-SAT `optimal` with 0 violations.
+
+| measure | median | max | target |
+|---|---|---|---|
+| plan solve @ `time_limit_s` 8.0 | 0.21 s | 0.77 s | < 10 s |
+| plan solve @ `time_limit_s` 3.0 | 0.21 s | 0.86 s | < 4 s |
+| prediction, cold (wall) | 98 ms | 111 ms | < 2 s |
+| replan chain (disruption + predict + solve @ 3.0) | 0.17 s | 0.50 s | < 4 s |
+
+## Image check
+`docker build` was **not run** (Docker unavailable on the build host). `python scripts/simulate_image.py` reproduces the image instead (exact COPY layout in a temp dir, fresh Python 3.12 venv with `requirements.txt` only, the Dockerfile CMD/ENV, HEALTHCHECK, then health/scenarios/predictions/model/solve/disruption smoke tests): **PASS** for `backend/Dockerfile` and `infra/lambda.Dockerfile`. `infra/template.yaml` is `cfn-lint` clean with least-privilege IAM. See `DEMO_A.md` and `HANDOFF_FOR_B.md` for the demo and the merge hand-off.
+
 ## Status
 
 * Tests: `pytest` (unit, contract, property, e2e) and `npm run typecheck && npm test && npm run build` in `dashboard/`.

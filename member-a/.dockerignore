@@ -13,3 +13,11 @@ tests
 data/derived
 *.md
 !README.md
+**/.env
+**/.env.*
+!**/.env.example
+**/*.egg-info
+**/.pytest_cache
+**/.ruff_cache
+.mypy_cache
+out

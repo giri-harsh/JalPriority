@@ -4,6 +4,8 @@ from __future__ import annotations
 import importlib.util
 import json
 import re
+import subprocess
+import sys
 import tomllib
 from pathlib import Path
 from typing import Any
@@ -250,10 +252,129 @@ def test_sagemaker_role_is_scoped_to_training_and_models(template):
     assert template["Outputs"]["SageMakerRoleArn"]["Value"] == {"Fn::GetAtt": "SageMakerExecutionRole.Arn"}
 
 
-def test_bucket_policy_denies_plain_http(template):
+def test_bucket_policy_denies_plain_http_and_old_tls(template):
     (policy,) = resources_of(template, "AWS::S3::BucketPolicy").values()
-    (statement,) = policy["Properties"]["PolicyDocument"]["Statement"]
-    assert statement["Effect"] == "Deny" and statement["Condition"] == {"Bool": {"aws:SecureTransport": "false"}}
+    by_sid = {s["Sid"]: s for s in policy["Properties"]["PolicyDocument"]["Statement"]}
+    assert set(by_sid) == {"DenyInsecureTransport", "DenyOldTls"}
+    assert all(s["Effect"] == "Deny" for s in by_sid.values()), "the bucket policy only ever denies"
+    assert by_sid["DenyInsecureTransport"]["Condition"] == {"Bool": {"aws:SecureTransport": "false"}}
+    assert by_sid["DenyOldTls"]["Condition"] == {"NumericLessThan": {"s3:TlsVersion": 1.2}}
+
+
+def all_statements(template: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
+    return [(name, s) for name, role in resources_of(template, "AWS::IAM::Role").items() for s in statements(role)]
+
+
+def test_iam_has_no_negations_managed_policies_or_foreign_principals(template):
+    for name, role in resources_of(template, "AWS::IAM::Role").items():
+        assert "ManagedPolicyArns" not in role["Properties"], f"{name}: managed policies are broader than needed"
+        assert len(role["Properties"]["Policies"]) == 1
+    for name, statement in all_statements(template):
+        assert not {"NotAction", "NotResource", "NotPrincipal", "Principal"} & set(statement), f"{name}: {statement}"
+        assert statement.get("Sid"), f"{name}: every statement is named"
+    text = as_text(template["Resources"])
+    assert "iam:" not in text.replace("AWS::IAM::", ""), "no role may touch IAM"
+    assert "arn:aws:s3:::" not in text and "s3:::*" not in text, "S3 is only addressed through the bucket resource"
+
+
+def test_every_s3_statement_is_limited_to_the_artifacts_bucket(template):
+    for name, statement in all_statements(template):
+        actions = listed(statement["Action"])
+        if not any(a.startswith("s3:") for a in actions):
+            continue
+        for resource in listed(statement["Resource"]):
+            assert "ArtifactsBucket" in as_text(resource), f"{name}/{statement['Sid']}: {resource}"
+        if "s3:ListBucket" not in actions:  # object-level access needs a key prefix (or the one labels.json key)
+            for resource in listed(statement["Resource"]):
+                assert re.search(r"/a/[a-z]+/\*\"\}$|/a/labels\.json\"\}$", as_text(resource)), resource
+
+
+def test_bucket_listing_is_limited_to_the_key_prefixes(template):
+    for role_name, allowed in (
+        ("ApiFunctionRole", {"a/scenarios/*", "a/derived/*", "a/truth/*", "a/models/*", "a/training/*"}),
+        ("SageMakerExecutionRole", {"a/training", "a/training/*", "a/models", "a/models/*"}),
+    ):
+        listings = [s for s in statements(template["Resources"][role_name]) if "s3:ListBucket" in listed(s["Action"])]
+        assert len(listings) == 1
+        condition = listings[0]["Condition"]
+        # HeadBucket (the startup check) carries no prefix, so the key must be optional: ...IfExists
+        assert set(condition) == {"StringLikeIfExists"}, condition
+        assert set(condition["StringLikeIfExists"]["s3:prefix"]) == allowed
+
+
+def test_lambda_role_writes_only_its_own_log_group(template):
+    role = template["Resources"]["ApiFunctionRole"]
+    (logs,) = [s for s in statements(role) if any(a.startswith("logs:") for a in listed(s["Action"]))]
+    assert sorted(listed(logs["Action"])) == ["logs:CreateLogStream", "logs:PutLogEvents"]  # the group is made by CFN
+    function_name = template["Resources"]["ApiFunction"]["Properties"]["FunctionName"]["Fn::Sub"]
+    group_name = template["Resources"]["ApiLogGroup"]["Properties"]["LogGroupName"]["Fn::Sub"]
+    assert group_name == f"/aws/lambda/{function_name}", "the log group must be the one the function writes to"
+    assert as_text(logs["Resource"]).count(f"log-group:{group_name}:*") == 1
+    log_group = template["Resources"]["ApiLogGroup"]
+    assert log_group["Properties"]["RetentionInDays"] <= 30
+    assert log_group["DeletionPolicy"] == "Delete" and log_group["UpdateReplacePolicy"] == "Delete"
+
+
+def test_sagemaker_role_trust_and_images_are_scoped(template):
+    role = template["Resources"]["SageMakerExecutionRole"]
+    trust = role["Properties"]["AssumeRolePolicyDocument"]["Statement"][0]
+    assert trust["Condition"]["StringEquals"] == {"aws:SourceAccount": {"Ref": "AWS::AccountId"}}
+    assert "sagemaker:${AWS::Region}:${AWS::AccountId}" in as_text(trust["Condition"]["ArnLike"]["aws:SourceArn"])
+    by_sid = {s["Sid"]: s for s in statements(role)}
+    assert "repository/jp-a-*" in as_text(by_sid["PullTrainingImage"]["Resource"])
+    assert listed(by_sid["EcrLogin"]["Action"]) == ["ecr:GetAuthorizationToken"]
+    assert by_sid["Metrics"]["Condition"] == {"StringLike": {"cloudwatch:namespace": "/aws/sagemaker/*"}}
+    assert "log-group:/aws/sagemaker/*" in as_text(by_sid["Logs"]["Resource"])
+
+
+def test_sagemaker_actions_on_the_lambda_role_are_read_or_invoke_only_and_jp_a_scoped(template):
+    role = template["Resources"]["ApiFunctionRole"]
+    allowed = {
+        "sagemaker:InvokeEndpoint", "sagemaker:DescribeEndpoint", "sagemaker:DescribeEndpointConfig", "sagemaker:DescribeModel",
+    }  # fmt: skip
+    for statement in statements(role):
+        sage = [a for a in listed(statement["Action"]) if a.startswith("sagemaker:")]
+        assert set(sage) <= allowed
+        if sage:
+            assert all("/jp-a-*" in as_text(r) for r in listed(statement["Resource"]))
+
+
+def test_http_api_is_throttled_and_cors_is_not_a_wildcard(template):
+    api = template["Resources"]["HttpApi"]["Properties"]
+    assert 0 < api["DefaultRouteSettings"]["ThrottlingRateLimit"] <= api["DefaultRouteSettings"]["ThrottlingBurstLimit"]
+    assert api["CorsConfiguration"]["AllowOrigins"] == {"Fn::Split": [",", {"Ref": "CorsOrigins"}]}
+    assert "*" not in template["Parameters"]["CorsOrigins"]["Default"]
+    assert set(api["CorsConfiguration"]["AllowMethods"]) <= {"GET", "POST", "OPTIONS"}
+
+
+def test_bucket_lifecycle_and_versioning(template):
+    (bucket,) = resources_of(template, "AWS::S3::Bucket").values()
+    props = bucket["Properties"]
+    assert props["VersioningConfiguration"]["Status"] == "Enabled"
+    rules = {r["Id"]: r for r in props["LifecycleConfiguration"]["Rules"]}
+    assert rules["expire-derived-scenarios"]["Prefix"] == "a/derived/"
+    assert rules["abort-incomplete-multipart-uploads"]["AbortIncompleteMultipartUpload"]["DaysAfterInitiation"] == 1
+    assert bucket["UpdateReplacePolicy"] == "Retain"
+
+
+def test_samconfig_resolves_repositories_and_can_deploy_the_iam_roles():
+    deploy = tomllib.loads((INFRA / "samconfig.toml").read_text(encoding="utf-8"))["default"]["deploy"]["parameters"]
+    assert deploy["resolve_image_repos"] is True and deploy["resolve_s3"] is True
+    assert deploy["capabilities"] == "CAPABILITY_IAM", "no named IAM resources, so NAMED_IAM would be too broad"
+    assert deploy["confirm_changeset"] is True
+
+
+def test_template_is_clean_under_cfn_lint():
+    """cfn-lint (the .venv has it) with warnings AND informational rules enabled: zero findings expected."""
+    if importlib.util.find_spec("cfnlint") is None:
+        pytest.skip("cfn-lint is not installed (uv pip install cfn-lint)")
+    command = "import sys; from cfnlint.runner import main; sys.argv[0] = 'cfn-lint'; sys.exit(main())"
+    result = subprocess.run(
+        [sys.executable, "-c", command, "-c", "I", "-c", "W", "--non-zero-exit-code", "informational", "-t", str(TEMPLATE)],
+        capture_output=True, text=True, check=False, timeout=240,
+    )  # fmt: skip
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout.strip() == ""
 
 
 # ------------------------------------------------------------------------------------ SageMaker entry point
