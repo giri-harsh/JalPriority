@@ -1,0 +1,6 @@
+{
+  "scenario_id": "scn_sa01_w06",
+  "weights": {"urgency": 1.0, "debt": 1.0, "vulnerability": 0.5, "travel": 20.0},
+  "debt_by_area": {"ar_01": 0, "ar_02": 8000, "ar_03": 12000},
+  "time_limit_s": 8.0
+}

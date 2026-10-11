@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "model_version": "xgb-sa-v1",
+  "trained_at": "2026-10-10T08:00:00.000Z",
+  "train_rows": 6912,
+  "test_rows": 1680,
+  "target": "need_litres",
+  "metrics": {
+    "xgboost": {"mae_litres": 1520.4, "rmse_litres": 2105.9},
+    "last_observed_baseline": {"mae_litres": 2890.7, "rmse_litres": 3954.2}
+  },
+  "feature_importances": [
+    {"feature": "heat_index_c", "importance": 0.31},
+    {"feature": "last_need_litres", "importance": 0.24},
+    {"feature": "population", "importance": 0.17}
+  ],
+  "is_simulation": true,
+  "disclaimer": "Trained and evaluated on synthetic data. Simulation results only; not real-world accuracy."
+}

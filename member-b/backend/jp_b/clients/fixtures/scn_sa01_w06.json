@@ -1,0 +1,158 @@
+{
+  "schema_version": "1.0",
+  "scenario_id": "scn_sa01_w06",
+  "parent_scenario_id": null,
+  "service_area_id": "sa_01",
+  "service_area_name": "Synthetic Service Area 01",
+  "window_index": 6,
+  "window_start": "2026-05-21T06:00:00.000Z",
+  "window_hours": 12,
+  "is_synthetic": true,
+  "seed": 42,
+  "heat": {
+    "alert_level": 2,
+    "max_temp_c": 44.5,
+    "heat_index_c": 49.0
+  },
+  "supply": {
+    "tanker_water_available_litres": 20000
+  },
+  "depot": {
+    "depot_id": "dp_01",
+    "name": "Central Depot (synthetic)",
+    "lat": 28.6692,
+    "lon": 77.4538
+  },
+  "tankers": [
+    {"tanker_id": "tk_01", "capacity_litres": 12000, "status": "available", "max_route_km": 60.0},
+    {"tanker_id": "tk_02", "capacity_litres": 10000, "status": "available", "max_route_km": 60.0},
+    {"tanker_id": "tk_03", "capacity_litres": 10000, "status": "unavailable", "max_route_km": 60.0},
+    {"tanker_id": "tk_04", "capacity_litres": 12000, "status": "unavailable", "max_route_km": 60.0}
+  ],
+  "areas": [
+    {
+      "area_id": "ar_01", "name": "Ward 01 (synthetic)", "lat": 28.6801, "lon": 77.4412,
+      "population": 18000, "vulnerability_index": 0.30, "vulnerability_available": true,
+      "heat_exposure": 0.55, "expected_piped_litres": 40000,
+      "requested_litres": 20000, "request_time": "2026-05-21T05:05:00.000Z",
+      "last_delivery_litres": 8000, "last_delivery_at": "2026-05-20T14:10:00.000Z",
+      "history": [
+        {"window_index": 1, "need_litres": 48000, "received_litres": 48000, "max_temp_c": 39.0, "alert_level": 0},
+        {"window_index": 2, "need_litres": 49000, "received_litres": 49000, "max_temp_c": 40.0, "alert_level": 0},
+        {"window_index": 3, "need_litres": 50000, "received_litres": 50000, "max_temp_c": 41.0, "alert_level": 1},
+        {"window_index": 4, "need_litres": 52000, "received_litres": 52000, "max_temp_c": 42.0, "alert_level": 1},
+        {"window_index": 5, "need_litres": 53000, "received_litres": 53000, "max_temp_c": 43.1, "alert_level": 1}
+      ]
+    },
+    {
+      "area_id": "ar_02", "name": "Ward 02 (synthetic)", "lat": 28.6915, "lon": 77.4705,
+      "population": 11000, "vulnerability_index": 0.55, "vulnerability_available": true,
+      "heat_exposure": 0.70, "expected_piped_litres": 24000,
+      "requested_litres": 9000, "request_time": "2026-05-21T05:40:00.000Z",
+      "last_delivery_litres": 6000, "last_delivery_at": "2026-05-20T15:30:00.000Z",
+      "history": [
+        {"window_index": 1, "need_litres": 28000, "received_litres": 25000, "max_temp_c": 39.0, "alert_level": 0},
+        {"window_index": 2, "need_litres": 29000, "received_litres": 26000, "max_temp_c": 40.0, "alert_level": 0},
+        {"window_index": 3, "need_litres": 30000, "received_litres": 26000, "max_temp_c": 41.0, "alert_level": 1},
+        {"window_index": 4, "need_litres": 31000, "received_litres": 26000, "max_temp_c": 42.0, "alert_level": 1},
+        {"window_index": 5, "need_litres": 32000, "received_litres": 27500, "max_temp_c": 43.1, "alert_level": 1}
+      ]
+    },
+    {
+      "area_id": "ar_03", "name": "Ward 03 (synthetic)", "lat": 28.7120, "lon": 77.5010,
+      "population": 7000, "vulnerability_index": 0.80, "vulnerability_available": true,
+      "heat_exposure": 0.90, "expected_piped_litres": 15000,
+      "requested_litres": 4000, "request_time": "2026-05-21T06:55:00.000Z",
+      "last_delivery_litres": 0, "last_delivery_at": null,
+      "history": [
+        {"window_index": 1, "need_litres": 18000, "received_litres": 13000, "max_temp_c": 39.0, "alert_level": 0},
+        {"window_index": 2, "need_litres": 18500, "received_litres": 13500, "max_temp_c": 40.0, "alert_level": 0},
+        {"window_index": 3, "need_litres": 19000, "received_litres": 14000, "max_temp_c": 41.0, "alert_level": 1},
+        {"window_index": 4, "need_litres": 20000, "received_litres": 14000, "max_temp_c": 42.0, "alert_level": 1},
+        {"window_index": 5, "need_litres": 20500, "received_litres": 12700, "max_temp_c": 43.1, "alert_level": 1}
+      ]
+    },
+    {
+      "area_id": "ar_04", "name": "Ward 04 (synthetic)", "lat": 28.6600, "lon": 77.4300,
+      "population": 9000, "vulnerability_index": 0.45, "vulnerability_available": true,
+      "heat_exposure": 0.60, "expected_piped_litres": 20000,
+      "requested_litres": 5000, "request_time": "2026-05-21T05:15:00.000Z",
+      "last_delivery_litres": 3000, "last_delivery_at": "2026-05-20T13:00:00.000Z",
+      "history": [
+        {"window_index": 1, "need_litres": 21000, "received_litres": 20000, "max_temp_c": 39.0, "alert_level": 0},
+        {"window_index": 2, "need_litres": 22000, "received_litres": 21000, "max_temp_c": 40.0, "alert_level": 0},
+        {"window_index": 3, "need_litres": 23000, "received_litres": 22000, "max_temp_c": 41.0, "alert_level": 1},
+        {"window_index": 4, "need_litres": 24000, "received_litres": 23000, "max_temp_c": 42.0, "alert_level": 1},
+        {"window_index": 5, "need_litres": 25000, "received_litres": 24000, "max_temp_c": 43.1, "alert_level": 1}
+      ]
+    },
+    {
+      "area_id": "ar_05", "name": "Ward 05 (synthetic)", "lat": 28.6500, "lon": 77.4600,
+      "population": 12000, "vulnerability_index": 0.50, "vulnerability_available": true,
+      "heat_exposure": 0.65, "expected_piped_litres": 25000,
+      "requested_litres": 6000, "request_time": "2026-05-21T05:50:00.000Z",
+      "last_delivery_litres": 4000, "last_delivery_at": "2026-05-20T16:00:00.000Z",
+      "history": [
+        {"window_index": 1, "need_litres": 26000, "received_litres": 25000, "max_temp_c": 39.0, "alert_level": 0},
+        {"window_index": 2, "need_litres": 27000, "received_litres": 26000, "max_temp_c": 40.0, "alert_level": 0},
+        {"window_index": 3, "need_litres": 28000, "received_litres": 27000, "max_temp_c": 41.0, "alert_level": 1},
+        {"window_index": 4, "need_litres": 29000, "received_litres": 28000, "max_temp_c": 42.0, "alert_level": 1},
+        {"window_index": 5, "need_litres": 30000, "received_litres": 29000, "max_temp_c": 43.1, "alert_level": 1}
+      ]
+    },
+    {
+      "area_id": "ar_06", "name": "Ward 06 (synthetic)", "lat": 28.6800, "lon": 77.4900,
+      "population": 8000, "vulnerability_index": 0.60, "vulnerability_available": true,
+      "heat_exposure": 0.75, "expected_piped_litres": 18000,
+      "requested_litres": 4500, "request_time": "2026-05-21T06:10:00.000Z",
+      "last_delivery_litres": 2500, "last_delivery_at": "2026-05-20T12:30:00.000Z",
+      "history": [
+        {"window_index": 1, "need_litres": 19000, "received_litres": 18000, "max_temp_c": 39.0, "alert_level": 0},
+        {"window_index": 2, "need_litres": 20000, "received_litres": 19000, "max_temp_c": 40.0, "alert_level": 0},
+        {"window_index": 3, "need_litres": 21000, "received_litres": 20000, "max_temp_c": 41.0, "alert_level": 1},
+        {"window_index": 4, "need_litres": 22000, "received_litres": 20500, "max_temp_c": 42.0, "alert_level": 1},
+        {"window_index": 5, "need_litres": 23000, "received_litres": 21000, "max_temp_c": 43.1, "alert_level": 1}
+      ]
+    },
+    {
+      "area_id": "ar_07", "name": "Ward 07 (synthetic, far/vulnerable)", "lat": 28.7300, "lon": 77.5200,
+      "population": 6500, "vulnerability_index": 0.85, "vulnerability_available": true,
+      "heat_exposure": 0.95, "expected_piped_litres": 12000,
+      "requested_litres": 6000, "request_time": "2026-05-21T07:15:00.000Z",
+      "last_delivery_litres": 0, "last_delivery_at": null,
+      "history": [
+        {"window_index": 1, "need_litres": 15000, "received_litres": 11000, "max_temp_c": 39.0, "alert_level": 0},
+        {"window_index": 2, "need_litres": 15500, "received_litres": 11500, "max_temp_c": 40.0, "alert_level": 0},
+        {"window_index": 3, "need_litres": 16000, "received_litres": 11500, "max_temp_c": 41.0, "alert_level": 1},
+        {"window_index": 4, "need_litres": 17000, "received_litres": 11500, "max_temp_c": 42.0, "alert_level": 1},
+        {"window_index": 5, "need_litres": 18000, "received_litres": 12000, "max_temp_c": 43.1, "alert_level": 1}
+      ]
+    },
+    {
+      "area_id": "ar_08", "name": "Ward 08 (synthetic, far/vulnerable)", "lat": 28.7450, "lon": 77.5400,
+      "population": 5500, "vulnerability_index": 0.90, "vulnerability_available": true,
+      "heat_exposure": 0.95, "expected_piped_litres": 10000,
+      "requested_litres": 5500, "request_time": "2026-05-21T07:30:00.000Z",
+      "last_delivery_litres": 0, "last_delivery_at": null,
+      "history": [
+        {"window_index": 1, "need_litres": 13000, "received_litres": 9000, "max_temp_c": 39.0, "alert_level": 0},
+        {"window_index": 2, "need_litres": 13500, "received_litres": 9500, "max_temp_c": 40.0, "alert_level": 0},
+        {"window_index": 3, "need_litres": 14000, "received_litres": 9500, "max_temp_c": 41.0, "alert_level": 1},
+        {"window_index": 4, "need_litres": 15000, "received_litres": 9500, "max_temp_c": 42.0, "alert_level": 1},
+        {"window_index": 5, "need_litres": 16000, "received_litres": 9500, "max_temp_c": 43.1, "alert_level": 1}
+      ]
+    }
+  ],
+  "distance_km": {
+    "dp_01": {"dp_01": 0.0, "ar_01": 3.1, "ar_02": 6.4, "ar_03": 11.8, "ar_04": 2.8, "ar_05": 3.5, "ar_06": 7.2, "ar_07": 14.5, "ar_08": 17.2},
+    "ar_01": {"dp_01": 3.1, "ar_01": 0.0, "ar_02": 4.0, "ar_03": 9.5, "ar_04": 2.5, "ar_05": 4.2, "ar_06": 6.1, "ar_07": 12.8, "ar_08": 15.6},
+    "ar_02": {"dp_01": 6.4, "ar_01": 4.0, "ar_02": 0.0, "ar_03": 6.2, "ar_04": 5.8, "ar_05": 5.0, "ar_06": 3.4, "ar_07": 9.2, "ar_08": 12.1},
+    "ar_03": {"dp_01": 11.8, "ar_01": 9.5, "ar_02": 6.2, "ar_03": 0.0, "ar_04": 11.2, "ar_05": 10.5, "ar_06": 5.6, "ar_07": 4.1, "ar_08": 6.8},
+    "ar_04": {"dp_01": 2.8, "ar_01": 2.5, "ar_02": 5.8, "ar_03": 11.2, "ar_04": 0.0, "ar_05": 3.1, "ar_06": 7.0, "ar_07": 13.9, "ar_08": 16.5},
+    "ar_05": {"dp_01": 3.5, "ar_01": 4.2, "ar_02": 5.0, "ar_03": 10.5, "ar_04": 3.1, "ar_05": 0.0, "ar_06": 4.8, "ar_07": 12.0, "ar_08": 14.8},
+    "ar_06": {"dp_01": 7.2, "ar_01": 6.1, "ar_02": 3.4, "ar_03": 5.6, "ar_04": 7.0, "ar_05": 4.8, "ar_06": 0.0, "ar_07": 6.5, "ar_08": 9.4},
+    "ar_07": {"dp_01": 14.5, "ar_01": 12.8, "ar_02": 9.2, "ar_03": 4.1, "ar_04": 13.9, "ar_05": 12.0, "ar_06": 6.5, "ar_07": 0.0, "ar_08": 3.2},
+    "ar_08": {"dp_01": 17.2, "ar_01": 15.6, "ar_02": 12.1, "ar_03": 6.8, "ar_04": 16.5, "ar_05": 14.8, "ar_06": 9.4, "ar_07": 3.2, "ar_08": 0.0}
+  },
+  "disruptions_applied": []
+}

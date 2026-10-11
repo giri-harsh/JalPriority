@@ -1,0 +1,427 @@
+/* Screen-level styling tokens and layouts */
+
+.screenContainer {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--jp-text);
+  margin: 0 0 6px 0;
+  letter-spacing: -0.01em;
+}
+
+.subtitle {
+  font-size: 0.9rem;
+  color: var(--jp-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+  gap: 20px;
+}
+
+.grid3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  background-color: var(--jp-surface);
+  border: 1px solid var(--jp-border);
+  border-radius: var(--jp-radius);
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--jp-border);
+  padding-bottom: 12px;
+}
+
+.cardTitle {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--jp-text);
+  margin: 0;
+}
+
+.cardSubtitle {
+  font-size: 0.8rem;
+  color: var(--jp-muted);
+  margin: 4px 0 0 0;
+}
+
+/* Formula Box */
+.formulaBox {
+  background-color: var(--jp-bg);
+  border: 1px solid var(--jp-border);
+  border-left: 4px solid var(--jp-accent);
+  border-radius: var(--jp-radius);
+  padding: 12px 16px;
+}
+
+.formulaTitle {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--jp-muted);
+  margin-bottom: 4px;
+}
+
+.formulaCode {
+  font-family: var(--jp-mono);
+  font-size: 0.95rem;
+  color: var(--jp-text);
+  font-weight: 600;
+}
+
+/* Weight Sliders */
+.sliderList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sliderRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background-color: var(--jp-bg);
+  border: 1px solid var(--jp-border);
+  border-radius: var(--jp-radius);
+}
+
+.sliderHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sliderLabel {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--jp-text);
+}
+
+.sliderValues {
+  font-family: var(--jp-mono);
+  font-size: 0.85rem;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.currentVal {
+  color: var(--jp-accent);
+  font-weight: 700;
+}
+
+.defaultVal {
+  color: var(--jp-muted);
+  font-size: 0.75rem;
+}
+
+.sliderInput {
+  width: 100%;
+  accent-color: var(--jp-accent);
+  cursor: pointer;
+}
+
+.sliderInput:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.sliderHelp {
+  font-size: 0.8rem;
+  color: var(--jp-muted);
+  margin: 0;
+  line-height: 1.3;
+}
+
+/* Policy Callout */
+.callout {
+  padding: 12px 16px;
+  border-radius: var(--jp-radius);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  background-color: var(--jp-bg);
+  border: 1px solid var(--jp-border);
+  color: var(--jp-text);
+}
+
+.calloutInfo {
+  background-color: var(--jp-accent-weak);
+  border-color: var(--jp-accent);
+  color: #083344;
+}
+
+.calloutWarn {
+  background-color: #fef3c7;
+  border-color: var(--jp-warn);
+  color: #78350f;
+}
+
+.calloutDanger {
+  background-color: var(--jp-danger-weak);
+  border-color: var(--jp-danger);
+  color: #7f1d1d;
+}
+
+/* Table styles */
+.tableWrapper {
+  overflow-x: auto;
+  border: 1px solid var(--jp-border);
+  border-radius: var(--jp-radius);
+  background-color: var(--jp-surface);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+.table th {
+  background-color: var(--jp-bg);
+  color: var(--jp-muted);
+  font-weight: 600;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--jp-border);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--jp-border);
+  color: var(--jp-text);
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tr:hover {
+  background-color: rgba(0, 0, 0, 0.015);
+}
+
+.unmetDanger {
+  color: var(--jp-danger);
+  font-weight: 600;
+}
+
+.coverageLow {
+  color: var(--jp-danger);
+  font-weight: 600;
+}
+
+/* Replan Readout Card */
+.readoutCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  border-radius: var(--jp-radius);
+  border: 2px solid var(--jp-border);
+  text-align: center;
+}
+
+.readoutFast {
+  border-color: var(--jp-ok);
+  background-color: #f0fdf4;
+}
+
+.readoutSlow {
+  border-color: var(--jp-warn);
+  background-color: #fffbeb;
+}
+
+.readoutNumber {
+  font-family: var(--jp-mono);
+  font-size: 2.2rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.readoutFast .readoutNumber {
+  color: var(--jp-ok);
+}
+
+.readoutSlow .readoutNumber {
+  color: var(--jp-warn);
+}
+
+.readoutLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--jp-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.badgeOk {
+  background-color: #dcfce7;
+  color: var(--jp-ok);
+  border: 1px solid var(--jp-ok);
+}
+
+.badgeWarn {
+  background-color: #fef3c7;
+  color: var(--jp-warn);
+  border: 1px solid var(--jp-warn);
+}
+
+.badgeDanger {
+  background-color: var(--jp-danger-weak);
+  color: var(--jp-danger);
+  border: 1px solid var(--jp-danger);
+}
+
+.badgeMuted {
+  background-color: var(--jp-bg);
+  color: var(--jp-muted);
+  border: 1px solid var(--jp-border);
+}
+
+.bestCell {
+  background-color: var(--jp-accent-weak);
+  font-weight: 700;
+  color: var(--jp-accent);
+}
+
+/* Diff Statuses */
+.diffDropped {
+  background-color: var(--jp-danger-weak);
+  color: var(--jp-danger);
+  font-weight: 700;
+}
+
+.diffDecreased {
+  color: var(--jp-danger);
+  font-weight: 600;
+}
+
+.diffIncreased {
+  color: var(--jp-ok);
+  font-weight: 600;
+}
+
+.diffNewlyServed {
+  background-color: #dcfce7;
+  color: var(--jp-ok);
+  font-weight: 700;
+}
+
+.diffReassigned {
+  color: var(--jp-warn);
+  font-weight: 600;
+}
+
+.diffUnchanged {
+  color: var(--jp-muted);
+}
+
+/* Button Group */
+.buttonRow {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 9px 18px;
+  border-radius: var(--jp-radius);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnPrimary {
+  background-color: var(--jp-accent);
+  color: #ffffff;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background-color: #0c4a6e;
+}
+
+.btnSuccess {
+  background-color: var(--jp-ok);
+  color: #ffffff;
+}
+
+.btnSuccess:hover:not(:disabled) {
+  background-color: #166534;
+}
+
+.btnOutline {
+  background-color: var(--jp-surface);
+  border-color: var(--jp-border);
+  color: var(--jp-text);
+}
+
+.btnOutline:hover:not(:disabled) {
+  background-color: var(--jp-bg);
+}
+
+/* Footer disclaimer */
+.disclaimerFooter {
+  font-size: 0.8rem;
+  color: var(--jp-muted);
+  text-align: center;
+  padding: 16px;
+  border-top: 1px dashed var(--jp-border);
+  margin-top: 8px;
+}

@@ -1,0 +1,33 @@
+:root {
+  --jp-bg: #f6f7f9;
+  --jp-surface: #ffffff;
+  --jp-text: #111827;
+  --jp-muted: #6b7280;
+  --jp-border: #e5e7eb;
+  --jp-accent: #0e7490;
+  --jp-accent-weak: #cffafe;
+  --jp-danger: #b91c1c;
+  --jp-danger-weak: #fee2e2;
+  --jp-warn: #b45309;
+  --jp-ok: #15803d;
+  --jp-strat-jalpriority: #0e7490;
+  --jp-strat-fcfs: #6b7280;
+  --jp-strat-nearest: #a16207;
+  --jp-font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --jp-mono: "JetBrains Mono", ui-monospace, monospace;
+  --jp-radius: 8px;
+  --jp-space: 8px;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--jp-bg);
+  color: var(--jp-text);
+  font-family: var(--jp-font);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}

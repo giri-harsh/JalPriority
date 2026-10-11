@@ -1,0 +1,5 @@
+pytest==8.3.4
+respx==0.22.0
+moto[dynamodb]==5.0.24
+freezegun==1.5.1
+ruff==0.8.4

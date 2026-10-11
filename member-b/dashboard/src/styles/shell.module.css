@@ -1,0 +1,385 @@
+/* Shell Layout */
+.jpbShell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--jp-bg);
+}
+
+.jpbHeader {
+  height: 64px;
+  background-color: var(--jp-surface);
+  border-bottom: 1px solid var(--jp-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.jpbHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.jpbTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--jp-accent);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.jpbDisclaimerBadge {
+  background-color: var(--jp-danger-weak);
+  color: var(--jp-danger);
+  border: 1px solid var(--jp-danger);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--jp-radius);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.jpbHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.jpbChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  background-color: var(--jp-bg);
+  border: 1px solid var(--jp-border);
+  color: var(--jp-muted);
+}
+
+.jpbChipPrimary {
+  background-color: var(--jp-accent-weak);
+  color: var(--jp-accent);
+  border-color: var(--jp-accent);
+  font-family: var(--jp-mono);
+  font-weight: 600;
+}
+
+.jpbOfficerChip {
+  font-weight: 500;
+  color: var(--jp-text);
+}
+
+.jpbRoleBadge {
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  background-color: var(--jp-border);
+  border-radius: 4px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.jpbLogoutBtn {
+  background: none;
+  border: 1px solid var(--jp-border);
+  padding: 6px 12px;
+  border-radius: var(--jp-radius);
+  color: var(--jp-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.jpbLogoutBtn:hover {
+  background-color: var(--jp-bg);
+  color: var(--jp-danger);
+  border-color: var(--jp-danger);
+}
+
+/* Tab Bar */
+.jpbTabBar {
+  height: 48px;
+  background-color: var(--jp-surface);
+  border-bottom: 1px solid var(--jp-border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 8px;
+  position: sticky;
+  top: 64px;
+  z-index: 30;
+}
+
+.jpbTab {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 16px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--jp-muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.jpbTab:hover {
+  color: var(--jp-text);
+}
+
+.jpbTabActive {
+  color: var(--jp-accent);
+  border-bottom-color: var(--jp-accent);
+  font-weight: 600;
+}
+
+/* Screen Slot */
+.jpbScreenSlot {
+  width: 100%;
+  min-height: calc(100vh - 112px);
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+/* Approval Bar */
+.jpbApprovalBar {
+  background-color: var(--jp-surface);
+  border: 1px solid var(--jp-border);
+  border-radius: var(--jp-radius);
+  padding: 14px 20px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.jpbApprovalInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.jpbStatusBadge {
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.jpbStatusRecommended {
+  background-color: var(--jp-accent-weak);
+  color: var(--jp-accent);
+  border: 1px solid var(--jp-accent);
+}
+
+.jpbStatusApproved {
+  background-color: #dcfce7;
+  color: var(--jp-ok);
+  border: 1px solid var(--jp-ok);
+}
+
+.jpbStatusEdited {
+  background-color: #fef3c7;
+  color: var(--jp-warn);
+  border: 1px solid var(--jp-warn);
+}
+
+.jpbStatusRejected {
+  background-color: var(--jp-danger-weak);
+  color: var(--jp-danger);
+  border: 1px solid var(--jp-danger);
+}
+
+.jpbStatusSuperseded {
+  background-color: #f3f4f6;
+  color: var(--jp-muted);
+  border: 1px solid var(--jp-border);
+}
+
+.jpbApprovalActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+}
+
+.jpbBtn {
+  padding: 8px 16px;
+  border-radius: var(--jp-radius);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.jpbBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.jpbBtnSuccess {
+  background-color: var(--jp-ok);
+  color: #ffffff;
+}
+
+.jpbBtnSuccess:hover:not(:disabled) {
+  background-color: #166534;
+}
+
+.jpbBtnPrimary {
+  background-color: var(--jp-accent);
+  color: #ffffff;
+}
+
+.jpbBtnPrimary:hover:not(:disabled) {
+  background-color: #0c4a6e;
+}
+
+.jpbBtnDanger {
+  background-color: var(--jp-danger);
+  color: #ffffff;
+}
+
+.jpbBtnDanger:hover:not(:disabled) {
+  background-color: #991b1b;
+}
+
+.jpbBtnOutline {
+  background-color: var(--jp-surface);
+  border-color: var(--jp-border);
+  color: var(--jp-text);
+}
+
+.jpbBtnOutline:hover:not(:disabled) {
+  background-color: var(--jp-bg);
+}
+
+/* Modals & Popovers */
+.jpbModalOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.jpbModal {
+  background-color: var(--jp-surface);
+  border-radius: var(--jp-radius);
+  padding: 24px;
+  max-width: 440px;
+  width: 90%;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.jpbPopover {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background-color: var(--jp-surface);
+  border: 1px solid var(--jp-border);
+  border-radius: var(--jp-radius);
+  padding: 16px;
+  width: 320px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+}
+
+.jpbSliderGroup {
+  margin-bottom: 12px;
+}
+
+.jpbSliderLabel {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.jpbSlider {
+  width: 100%;
+}
+
+.jpbTextarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 8px;
+  border: 1px solid var(--jp-border);
+  border-radius: var(--jp-radius);
+  font-family: var(--jp-font);
+  font-size: 0.85rem;
+  margin: 12px 0;
+  box-sizing: border-box;
+}
+
+.jpbErrorCallout {
+  padding: 8px 12px;
+  background-color: var(--jp-danger-weak);
+  color: var(--jp-danger);
+  border-radius: var(--jp-radius);
+  font-size: 0.8rem;
+  margin-top: 8px;
+}
+
+/* Login Screen */
+.jpbLoginContainer {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--jp-bg);
+  padding: 16px;
+}
+
+.jpbLoginCard {
+  background-color: var(--jp-surface);
+  border: 1px solid var(--jp-border);
+  border-radius: var(--jp-radius);
+  padding: 36px 32px;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.jpbFormGroup {
+  margin-bottom: 16px;
+}
+
+.jpbLabel {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: var(--jp-text);
+}
+
+.jpbInput {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--jp-border);
+  border-radius: var(--jp-radius);
+  font-size: 0.9rem;
+  font-family: var(--jp-font);
+  box-sizing: border-box;
+}
+
+.jpbInput:focus {
+  outline: none;
+  border-color: var(--jp-accent);
+  box-shadow: 0 0 0 2px var(--jp-accent-weak);
+}

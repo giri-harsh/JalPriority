@@ -1,0 +1,16 @@
+.venv
+.venv/
+node_modules
+node_modules/
+dist
+dist/
+var
+var/
+.env
+.env.*
+__pycache__
+__pycache__/
+*.py[cod]
+.git
+.git/
+dashboard/

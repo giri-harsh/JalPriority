@@ -1,0 +1,10 @@
+{
+  "schema_version": "1.0",
+  "priority_weighted_unmet": 12683.7,
+  "deprivation_debt_remaining_litres": 23000,
+  "total_unmet_litres": 9000,
+  "min_coverage_ratio": 0.3571,
+  "total_travel_km": 37.2,
+  "constraint_violations": 0,
+  "replanning_time_ms": null
+}
