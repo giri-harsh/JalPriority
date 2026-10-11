@@ -97,6 +97,14 @@ DELIVERY_FIRST_MIN, DELIVERY_STEP_MIN, DELIVERY_JITTER_MIN = 60, 45, 25
 REQUEST_LEAD_BASE_MIN, REQUEST_LEAD_SPAN_MIN, REQUEST_LEAD_SIGMA_MIN = -55.0, 225.0, 6.0
 REQUEST_VOICE_WEIGHT, REQUEST_NEARNESS_WEIGHT = 0.6, 0.4
 
+# Decorrelate request order from depot distance for NEAR / MID areas of the sa_01 seeds only, so FCFS and
+# nearest-first serve different areas. Key = distance rank (0 = nearest); value = (voice, request lead in minutes
+# before window start). The far, vulnerable, late-requesting areas (ranks 5-7) are never overridden.
+#   rank 3 (mid distance): LOUD (requests 1.45x its shortfall) and requests EARLIEST of all -> FCFS serves it first
+#   rank 1 (near):         QUIET (0.70x) and requests late-ish (before the far wards) -> nearest-first serves it first
+# Voice is latent and absent from the training CSV, so the training path and the feature set are unchanged.
+DEMO_REQUEST_OVERRIDES = {3: (1.45, 215), 1: (0.70, 10)}
+
 # --------------------------------------------------------------------------- fleet
 N_TANKERS = 4
 TANKER_CAPACITY_UNITS = (100, 120)  # x 100 L, inclusive -> 10,000 .. 12,000 L
@@ -448,8 +456,16 @@ def build_demo_base(seed: int) -> DemoBase:
     )
 
 
+def _demo_voice(area: AreaProfile) -> float:
+    return DEMO_REQUEST_OVERRIDES[area.distance_rank][0] if area.distance_rank in DEMO_REQUEST_OVERRIDES else area.voice
+
+
 def _request_lead_minutes(base: DemoBase, area: AreaProfile) -> int:
-    """Louder (higher voice) and nearer areas request earlier; positive = before window start."""
+    """Louder (higher voice) and nearer areas request earlier; positive = before window start.
+
+    Areas listed in ``DEMO_REQUEST_OVERRIDES`` use their fixed lead instead (see there)."""
+    if area.distance_rank in DEMO_REQUEST_OVERRIDES:
+        return DEMO_REQUEST_OVERRIDES[area.distance_rank][1]
     loudness = (area.voice - VOICE_RANGE[0]) / (VOICE_RANGE[1] - VOICE_RANGE[0])
     nearness = 1 - area.distance_rank / (len(base.sa.areas) - 1)
     score = REQUEST_VOICE_WEIGHT * loudness + REQUEST_NEARNESS_WEIGHT * nearness
@@ -484,7 +500,7 @@ def build_seed_scenario(base: DemoBase, variant: SeedVariant) -> tuple[Scenario,
             "area_id": a.area_id, "name": a.name, "lat": a.lat, "lon": a.lon,
             "population": a.population, "vulnerability_index": a.vulnerability_index, "vulnerability_available": True,
             "heat_exposure": a.heat_exposure, "expected_piped_litres": piped,
-            "requested_litres": _round100(shortfalls[a.area_id] * a.voice),
+            "requested_litres": _round100(shortfalls[a.area_id] * _demo_voice(a)),
             "request_time": to_iso(start - timedelta(minutes=_request_lead_minutes(base, a))),
             "last_delivery_litres": last_litres, "last_delivery_at": last_at,
             "history": [
