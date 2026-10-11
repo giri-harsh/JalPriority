@@ -1,0 +1,103 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  font-family: var(--jp-font);
+  color: var(--jp-text);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--jp-space) * 2);
+  align-items: center;
+  padding: calc(var(--jp-space) * 1.5) calc(var(--jp-space) * 2);
+  border-bottom: 1px solid var(--jp-border);
+  background: var(--jp-surface);
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+}
+
+.muted {
+  color: var(--jp-muted);
+  font-size: 0.8rem;
+}
+
+.badge {
+  padding: 3px 10px;
+  border: 1px solid var(--jp-warn);
+  border-radius: 999px;
+  color: var(--jp-warn);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.tab {
+  padding: 6px 16px;
+  border: 1px solid var(--jp-border);
+  border-radius: var(--jp-radius);
+  background: var(--jp-surface);
+  color: var(--jp-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.tabActive {
+  border-color: var(--jp-accent);
+  background: var(--jp-accent);
+  color: var(--jp-surface);
+  font-weight: 600;
+}
+
+.warning {
+  margin: 0;
+  padding: var(--jp-space) calc(var(--jp-space) * 2);
+  background: var(--jp-danger-weak);
+  color: var(--jp-danger);
+  font-size: 0.85rem;
+}
+
+.slot {
+  flex: 1;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 16px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--jp-space);
+  padding: calc(var(--jp-space) * 1.5);
+  border: 1px dashed var(--jp-border);
+  border-radius: var(--jp-radius);
+  background: var(--jp-surface);
+}
+
+.events {
+  padding: calc(var(--jp-space) * 2);
+  border-top: 1px solid var(--jp-border);
+  background: var(--jp-surface);
+}
+
+.eventsTitle {
+  margin: 0 0 var(--jp-space);
+  font-size: 0.9rem;
+}
+
+.eventList {
+  margin: 0;
+  padding-left: 1.4rem;
+  font-size: 0.8rem;
+}

@@ -1,0 +1,36 @@
+# python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
+.mypy_cache/
+build/
+*.egg
+
+# env (secrets stay local)
+.env
+
+# derived data (disruption scenarios are regenerated on demand)
+data/derived/*
+!data/derived/.gitkeep
+
+# node
+node_modules/
+dashboard/dist/
+dashboard/.vite/
+dashboard/coverage/
+*.tsbuildinfo
+
+# aws / sam
+.aws-sam/
+infra/.aws-sam/
+
+# editors / os
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.log

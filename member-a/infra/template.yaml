@@ -1,0 +1,342 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  JalPriority AI - Member A (need -> plan) API. FastAPI behind API Gateway HTTP API as a Lambda container image,
+  an S3 bucket for scenarios / derived scenarios / model artefacts / training data, and a SageMaker execution
+  role. Stack name: jalpriority-a. NOT deployed (no AWS credentials were available).
+
+Parameters:
+  SharedJwtSecret:
+    Type: String
+    NoEcho: true
+    MinLength: 32
+    Description: SHARED_JWT_SECRET (contract-owned, must equal the secret B signs tokens with). No default on purpose.
+  SharedJwtIssuer:
+    Type: String
+    Default: jalpriority-b
+  SharedJwtAudience:
+    Type: String
+    Default: jalpriority
+  StorageMode:
+    Type: String
+    Default: s3
+    AllowedValues: [local, s3]
+    Description: A_STORAGE_MODE. "s3" reads/writes the bucket (seeded from the image on first read); "local" uses the image copy.
+  ModelMode:
+    Type: String
+    Default: local
+    AllowedValues: [local, s3, sagemaker_endpoint]
+    Description: A_MODEL_MODE. "local" uses the model baked into the image; the others fall back to it on any failure.
+  SageMakerEndpointName:
+    Type: String
+    Default: ""
+    Description: A_SAGEMAKER_ENDPOINT (only used when ModelMode is sagemaker_endpoint; endpoint names must start with jp-a-).
+  CorsOrigins:
+    Type: String
+    Default: http://localhost:5174
+    Description: A_CORS_ORIGINS (comma separated).
+  LogLevel:
+    Type: String
+    Default: INFO
+    AllowedValues: [DEBUG, INFO, WARNING, ERROR]
+
+Resources:
+  # ---------------------------------------------------------------------------------------------------------------
+  # Storage. Key layout (A_S3_PREFIX = a/):
+  #   a/scenarios/  seed scenarios        a/derived/   disruption scenarios (regenerated on demand)
+  #   a/models/     model artefacts       a/training/  training CSVs and SageMaker job output
+  #   (a/truth/ and a/labels.json hold the demo ground truth; they are read through the same prefix.)
+  # ---------------------------------------------------------------------------------------------------------------
+  ArtifactsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub jalpriority-a-${AWS::AccountId}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-derived-scenarios
+            Status: Enabled
+            Prefix: a/derived/
+            ExpirationInDays: 30
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 7
+          - Id: abort-incomplete-multipart-uploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+      Tags:
+        - Key: project
+          Value: jalpriority
+        - Key: owner
+          Value: member-a
+
+  ArtifactsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ArtifactsBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !GetAtt ArtifactsBucket.Arn
+              - !Sub ${ArtifactsBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+          - Sid: DenyOldTls
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !GetAtt ArtifactsBucket.Arn
+              - !Sub ${ArtifactsBucket.Arn}/*
+            Condition:
+              NumericLessThan:
+                s3:TlsVersion: 1.2
+
+  # ---------------------------------------------------------------------------------------------------------------
+  # API: Lambda container image (jp_a.lambda_handler.handler, Mangum) behind an HTTP API.
+  # ---------------------------------------------------------------------------------------------------------------
+  ApiFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      # No AWSLambdaBasicExecutionRole: it allows logs:* writes on every log group. The function only needs its own
+      # log group, which this template creates (ApiLogGroup), so it gets exactly CreateLogStream + PutLogEvents there.
+      Policies:
+        - PolicyName: jp-a-api-data-access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: WriteOwnLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/jp-a-api-${AWS::StackName}:*
+              - Sid: ReadSeedsModelsAndTraining
+                Effect: Allow
+                Action: s3:GetObject
+                Resource:
+                  - !Sub ${ArtifactsBucket.Arn}/a/scenarios/*
+                  - !Sub ${ArtifactsBucket.Arn}/a/truth/*
+                  - !Sub ${ArtifactsBucket.Arn}/a/labels.json
+                  - !Sub ${ArtifactsBucket.Arn}/a/models/*
+                  - !Sub ${ArtifactsBucket.Arn}/a/training/*
+              - Sid: ReadWriteDerivedScenarios
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !Sub ${ArtifactsBucket.Arn}/a/derived/*
+              # HeadBucket (the startup reachability check) and missing-key 404s need s3:ListBucket on the bucket.
+              # Listings are limited to the key prefixes above; HeadBucket sends no prefix, hence ...IfExists.
+              - Sid: ListBucket
+                Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt ArtifactsBucket.Arn
+                Condition:
+                  StringLikeIfExists:
+                    s3:prefix:
+                      - a/scenarios/*
+                      - a/derived/*
+                      - a/truth/*
+                      - a/models/*
+                      - a/training/*
+              - Sid: UseJpASageMakerEndpoints
+                Effect: Allow
+                Action:
+                  - sagemaker:InvokeEndpoint
+                  - sagemaker:DescribeEndpoint
+                Resource: !Sub arn:${AWS::Partition}:sagemaker:${AWS::Region}:${AWS::AccountId}:endpoint/jp-a-*
+              - Sid: DescribeJpAEndpointModels
+                Effect: Allow
+                Action:
+                  - sagemaker:DescribeEndpointConfig
+                  - sagemaker:DescribeModel
+                Resource:
+                  - !Sub arn:${AWS::Partition}:sagemaker:${AWS::Region}:${AWS::AccountId}:endpoint-config/jp-a-*
+                  - !Sub arn:${AWS::Partition}:sagemaker:${AWS::Region}:${AWS::AccountId}:model/jp-a-*
+      Tags:
+        - Key: project
+          Value: jalpriority
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      Dockerfile: infra/lambda.Dockerfile
+      DockerContext: ..
+      DockerTag: jp-a-api
+    Properties:
+      FunctionName: !Sub jp-a-api-${AWS::StackName}
+      Description: JalPriority AI Member A API (FastAPI + Mangum container image).
+      PackageType: Image
+      Architectures:
+        - x86_64
+      MemorySize: 2048
+      Timeout: 15
+      Role: !GetAtt ApiFunctionRole.Arn
+      Environment:
+        Variables:
+          A_STORAGE_MODE: !Ref StorageMode
+          A_S3_BUCKET: !Ref ArtifactsBucket
+          A_S3_PREFIX: a/
+          A_MODEL_MODE: !Ref ModelMode
+          A_SAGEMAKER_ENDPOINT: !Ref SageMakerEndpointName
+          A_SAGEMAKER_ROLE_ARN: !GetAtt SageMakerExecutionRole.Arn
+          A_AWS_REGION: !Ref AWS::Region
+          # Leaves headroom inside the 15 s timeout for cold-start model load and response serialisation.
+          A_SOLVER_TIME_LIMIT_S: "6.0"
+          A_AUTH_DISABLED: "false"
+          A_CORS_ORIGINS: !Ref CorsOrigins
+          # Contract-owned secret, passed as a stack parameter (NoEcho, no default). It is visible to anyone who may call
+          # lambda:GetFunctionConfiguration; move it to Secrets Manager / SSM if the account has more readers than A and B.
+          SHARED_JWT_SECRET: !Ref SharedJwtSecret
+          SHARED_JWT_ISSUER: !Ref SharedJwtIssuer
+          SHARED_JWT_AUDIENCE: !Ref SharedJwtAudience
+          SHARED_ENV: aws
+          SHARED_LOG_LEVEL: !Ref LogLevel
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /{proxy+}
+            Method: ANY
+      Tags:
+        project: jalpriority
+        owner: member-a
+
+  # Same name the function writes to (FunctionName above); created by the stack so it can be expired and the
+  # function role never needs logs:CreateLogGroup.
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/jp-a-api-${AWS::StackName}
+      RetentionInDays: 14
+
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins: !Split [",", !Ref CorsOrigins]
+        AllowMethods: [GET, POST, OPTIONS]
+        AllowHeaders: [Authorization, Content-Type, X-Request-ID]
+        ExposeHeaders: [X-Request-ID]
+        MaxAge: 600
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 50
+        ThrottlingRateLimit: 25
+
+  # ---------------------------------------------------------------------------------------------------------------
+  # SageMaker execution role for training jobs / endpoints named jp-a-* (see infra/sagemaker/train_entry.py).
+  # ---------------------------------------------------------------------------------------------------------------
+  SageMakerExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sagemaker.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub arn:${AWS::Partition}:sagemaker:${AWS::Region}:${AWS::AccountId}:*
+      Policies:
+        - PolicyName: jp-a-sagemaker-access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: TrainingDataAndModels
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource:
+                  - !Sub ${ArtifactsBucket.Arn}/a/training/*
+                  - !Sub ${ArtifactsBucket.Arn}/a/models/*
+              - Sid: ListBucket
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                Resource: !GetAtt ArtifactsBucket.Arn
+                Condition:
+                  StringLikeIfExists:
+                    s3:prefix:
+                      - a/training
+                      - a/training/*
+                      - a/models
+                      - a/models/*
+              # Training / hosting images must live in an ECR repository named jp-a-* of this account.
+              - Sid: PullTrainingImage
+                Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                Resource: !Sub arn:${AWS::Partition}:ecr:${AWS::Region}:${AWS::AccountId}:repository/jp-a-*
+              # ecr:GetAuthorizationToken and cloudwatch:PutMetricData do not support resource-level permissions.
+              - Sid: EcrLogin
+                Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: "*"
+              - Sid: Logs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/sagemaker/*
+              - Sid: Metrics
+                Effect: Allow
+                Action: cloudwatch:PutMetricData
+                Resource: "*"
+                Condition:
+                  StringLike:
+                    cloudwatch:namespace: /aws/sagemaker/*
+      Tags:
+        - Key: project
+          Value: jalpriority
+
+Outputs:
+  ApiBaseUrl:
+    Description: Base URL; the API lives under /a/v1 (try /a/v1/health).
+    Value: !Sub https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}
+  BucketName:
+    Description: S3 bucket; use A_S3_BUCKET with prefix a/ (a/scenarios/, a/derived/, a/models/, a/training/).
+    Value: !Ref ArtifactsBucket
+  FunctionName:
+    Value: !Ref ApiFunction
+  SageMakerRoleArn:
+    Description: Value for A_SAGEMAKER_ROLE_ARN.
+    Value: !GetAtt SageMakerExecutionRole.Arn

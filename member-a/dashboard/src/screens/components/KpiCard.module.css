@@ -1,0 +1,47 @@
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  color: var(--jp-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.hint {
+  color: var(--jp-muted);
+  font-size: 0.8rem;
+}
+
+.bar {
+  height: 8px;
+  margin-top: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--jp-border);
+}
+
+.barFill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--jp-ok);
+}
+
+.barFillWarn {
+  background: var(--jp-warn);
+}
+
+.barFillDanger {
+  background: var(--jp-danger);
+}

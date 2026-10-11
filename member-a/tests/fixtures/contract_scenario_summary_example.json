@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "scenario_id": "scn_sa01_w06",
+  "parent_scenario_id": null,
+  "service_area_id": "sa_01",
+  "window_index": 6,
+  "label": "Main demo · heat alert 2 · supply ≈55% of shortfall",
+  "n_areas": 8,
+  "supply_litres": 20000,
+  "tankers_available": 2,
+  "alert_level": 2,
+  "is_synthetic": true
+}

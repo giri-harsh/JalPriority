@@ -1,0 +1,255 @@
+{
+  "schema_version": "1.0",
+  "plan_id": "pln_4b8f2a91c0de",
+  "status": "recommended",
+  "created_at": "2026-10-10T09:15:02.600Z",
+  "created_by": "officer_01",
+  "scenario_id": "scn_sa01_w06",
+  "service_area_id": "sa_01",
+  "window_index": 6,
+  "supersedes_plan_id": null,
+  "replan_of_plan_id": null,
+  "disruption": null,
+  "is_synthetic": true,
+  "result": {
+    "schema_version": "1.0",
+    "result_id": "res_7c1e9a40b2d3",
+    "strategy": "jalpriority",
+    "scenario_id": "scn_sa01_w06",
+    "service_area_id": "sa_01",
+    "window_index": 6,
+    "generated_at": "2026-10-10T09:15:02.481Z",
+    "weights": {
+      "urgency": 1.0,
+      "debt": 1.0,
+      "vulnerability": 0.5,
+      "travel": 20.0
+    },
+    "solver": {
+      "engine": "ortools-cp-sat",
+      "status": "optimal",
+      "solve_time_ms": 412,
+      "time_limit_s": 8.0
+    },
+    "prediction": {
+      "model_version": "xgb-sa-v1",
+      "latency_ms": 41,
+      "run_mae_litres": 640.0
+    },
+    "totals": {
+      "supply_available_litres": 20000,
+      "tanker_capacity_available_litres": 22000,
+      "shortfall_litres": 29000,
+      "allocated_litres": 20000,
+      "unmet_litres": 9000,
+      "travel_km": 37.2
+    },
+    "allocations": [
+      {
+        "area_id": "ar_03",
+        "rank": 1,
+        "predicted_shortfall_litres": 6000,
+        "allocated_litres": 6000,
+        "unmet_litres": 0,
+        "coverage_ratio": 1.0,
+        "priority_weight": 2.6857,
+        "urgency": 0.2857,
+        "debt_litres_used": 12000,
+        "debt_normalized": 1.0,
+        "vulnerability_used": 0.8,
+        "deliveries": [
+          {
+            "tanker_id": "tk_01",
+            "stop_order": 1,
+            "litres": 6000
+          }
+        ],
+        "reasons": [
+          {
+            "code": "HIGH_DEBT",
+            "params": {
+              "debt_litres": 12000
+            }
+          },
+          {
+            "code": "HIGH_VULNERABILITY",
+            "params": {
+              "vulnerability_index": 0.8
+            }
+          },
+          {
+            "code": "FULLY_SERVED",
+            "params": {
+              "allocated_litres": 6000
+            }
+          }
+        ],
+        "reason_text": "Served in full (6,000 L). Highest priority (2.69): largest accumulated deprivation debt (12,000 L) and high vulnerability (0.80).",
+        "is_unserved_remainder": false
+      },
+      {
+        "area_id": "ar_02",
+        "rank": 2,
+        "predicted_shortfall_litres": 9000,
+        "allocated_litres": 9000,
+        "unmet_litres": 0,
+        "coverage_ratio": 1.0,
+        "priority_weight": 2.2144,
+        "urgency": 0.2727,
+        "debt_litres_used": 8000,
+        "debt_normalized": 0.6667,
+        "vulnerability_used": 0.55,
+        "deliveries": [
+          {
+            "tanker_id": "tk_02",
+            "stop_order": 1,
+            "litres": 9000
+          }
+        ],
+        "reasons": [
+          {
+            "code": "HIGH_DEBT",
+            "params": {
+              "debt_litres": 8000
+            }
+          },
+          {
+            "code": "FULLY_SERVED",
+            "params": {
+              "allocated_litres": 9000
+            }
+          }
+        ],
+        "reason_text": "Served in full (9,000 L). Priority 2.21, driven by accumulated deprivation debt of 8,000 L from earlier windows.",
+        "is_unserved_remainder": false
+      },
+      {
+        "area_id": "ar_01",
+        "rank": 3,
+        "predicted_shortfall_litres": 14000,
+        "allocated_litres": 5000,
+        "unmet_litres": 9000,
+        "coverage_ratio": 0.3571,
+        "priority_weight": 1.4093,
+        "urgency": 0.2593,
+        "debt_litres_used": 0,
+        "debt_normalized": 0.0,
+        "vulnerability_used": 0.3,
+        "deliveries": [
+          {
+            "tanker_id": "tk_01",
+            "stop_order": 2,
+            "litres": 5000
+          }
+        ],
+        "reasons": [
+          {
+            "code": "LOWER_RELATIVE_PRIORITY",
+            "params": {
+              "priority_weight": 1.4093
+            }
+          },
+          {
+            "code": "PARTIALLY_SERVED",
+            "params": {
+              "allocated_litres": 5000,
+              "predicted_shortfall_litres": 14000
+            }
+          },
+          {
+            "code": "SUPPLY_EXHAUSTED",
+            "params": {
+              "supply_available_litres": 20000,
+              "unmet_litres": 9000
+            }
+          }
+        ],
+        "reason_text": "Partially served: 5,000 of 14,000 L (36%). 9,000 L remain unserved because all 20,000 L of tanker water went to higher-priority areas first; this area has no prior debt and low vulnerability (priority 1.41).",
+        "is_unserved_remainder": true
+      }
+    ],
+    "routes": [
+      {
+        "tanker_id": "tk_01",
+        "status": "assigned",
+        "capacity_litres": 12000,
+        "max_route_km": 60.0,
+        "load_litres": 11000,
+        "route_km": 24.4,
+        "stops": [
+          {
+            "stop_order": 1,
+            "area_id": "ar_03",
+            "litres": 6000
+          },
+          {
+            "stop_order": 2,
+            "area_id": "ar_01",
+            "litres": 5000
+          }
+        ],
+        "path": [
+          "dp_01",
+          "ar_03",
+          "ar_01",
+          "dp_01"
+        ]
+      },
+      {
+        "tanker_id": "tk_02",
+        "status": "assigned",
+        "capacity_litres": 10000,
+        "max_route_km": 60.0,
+        "load_litres": 9000,
+        "route_km": 12.8,
+        "stops": [
+          {
+            "stop_order": 1,
+            "area_id": "ar_02",
+            "litres": 9000
+          }
+        ],
+        "path": [
+          "dp_01",
+          "ar_02",
+          "dp_01"
+        ]
+      },
+      {
+        "tanker_id": "tk_03",
+        "status": "unavailable",
+        "capacity_litres": 10000,
+        "max_route_km": 60.0,
+        "load_litres": 0,
+        "route_km": 0.0,
+        "stops": [],
+        "path": []
+      }
+    ],
+    "unserved": [
+      {
+        "area_id": "ar_01",
+        "unmet_litres": 9000,
+        "reason_code": "SUPPLY_EXHAUSTED"
+      }
+    ],
+    "constraint_check": {
+      "water_cap_ok": true,
+      "capacity_ok": true,
+      "route_limit_ok": true,
+      "unavailable_tanker_ok": true,
+      "violations": []
+    }
+  },
+  "metrics": {
+    "schema_version": "1.0",
+    "priority_weighted_unmet": 12683.7,
+    "deprivation_debt_remaining_litres": 23000,
+    "total_unmet_litres": 9000,
+    "min_coverage_ratio": 0.3571,
+    "total_travel_km": 37.2,
+    "constraint_violations": 0,
+    "replanning_time_ms": null
+  },
+  "decision": null
+}
