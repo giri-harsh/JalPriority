@@ -320,8 +320,8 @@
       "vulnerability_available": true,
       "heat_exposure": 0.3,
       "expected_piped_litres": 12244,
-      "requested_litres": 3500,
-      "request_time": "2026-05-21T05:50:00.000Z",
+      "requested_litres": 7200,
+      "request_time": "2026-05-21T03:33:00.000Z",
       "last_delivery_litres": 6000,
       "last_delivery_at": "2026-05-20T20:08:00.000Z",
       "history": [
@@ -424,8 +424,8 @@
       "vulnerability_available": true,
       "heat_exposure": 0.59,
       "expected_piped_litres": 4925,
-      "requested_litres": 3700,
-      "request_time": "2026-05-21T04:19:00.000Z",
+      "requested_litres": 2100,
+      "request_time": "2026-05-21T05:50:00.000Z",
       "last_delivery_litres": 3900,
       "last_delivery_at": "2026-05-20T20:30:00.000Z",
       "history": [

@@ -101,9 +101,9 @@ REQUEST_VOICE_WEIGHT, REQUEST_NEARNESS_WEIGHT = 0.6, 0.4
 # nearest-first serve different areas. Key = distance rank (0 = nearest); value = (voice, request lead in minutes
 # before window start). The far, vulnerable, late-requesting areas (ranks 5-7) are never overridden.
 #   rank 3 (mid distance): LOUD (requests 1.45x its shortfall) and requests EARLIEST of all -> FCFS serves it first
-#   rank 1 (near):         QUIET (0.70x) and requests late-ish (before the far wards) -> nearest-first serves it first
+#   rank 2 (near):         QUIET (0.70x) and requests late-ish (before the far wards) -> nearest-first serves it early
 # Voice is latent and absent from the training CSV, so the training path and the feature set are unchanged.
-DEMO_REQUEST_OVERRIDES = {3: (1.45, 215), 1: (0.70, 10)}
+DEMO_REQUEST_OVERRIDES = {3: (1.45, 215), 2: (0.70, 10)}
 
 # --------------------------------------------------------------------------- fleet
 N_TANKERS = 4

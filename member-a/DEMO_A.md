@@ -31,14 +31,15 @@ Data and model are committed; nothing needs generating or training.
 | ar_02 (far, V 0.63) | 1.89 | 5,058 | 1,900 | 37.6% |
 | ar_04 (loud, near) | 1.40 | 6,197 | 1,400 | 22.6% |
 
-Compared with simple strategies (same supply, serving *requested* litres; FCFS and nearest-first coincide on this seed because request order = distance order):
+Compared with the two simple strategies (same supply 24,400 L, serving *requested* litres first-fit by tanker, route-limit checked; the seeds now have request order ≠ distance order, so the baselines differ):
 
-| strategy | priority-weighted unmet (F-9) | total unmet L | min coverage |
-|---|---|---|---|
-| **JalPriority** | **28,721.6** | **18,725** | **0.226** |
-| FCFS / nearest-first | 62,604.6 | 29,513 | 0.000 |
+| strategy | priority-weighted unmet (F-9) | total unmet L | min coverage | travel km | who it starves |
+|---|---|---|---|---|---|
+| **JalPriority** | **28,721.6** | **18,725** | **0.226** | 65.12 | nobody below 22% |
+| FCFS | 64,986.0 | 31,511 | 0.000 | 38.74 | serves ar_01 (loud, mid-distance, called first) 7,800 L, ar_04 15,000 L, ar_06 1,600 L; starves ar_08, ar_05, ar_02, ar_07, ar_03 |
+| nearest-first | 62,604.6 | 29,513 | 0.000 | 36.40 | serves ar_04 15,000 L, ar_06 8,600 L, ar_08 800 L; starves ar_01, ar_05, ar_02, ar_07, ar_03 |
 
-FCFS and nearest-first give the far, vulnerable, late areas (`ar_03`, `ar_07`, `ar_02`) **0%** because the loud near areas drain the water first; JalPriority serves `ar_07` and `ar_03` essentially in full and `ar_02` to 38%. On `scn_sa01_w06_severe` the same holds (F-9 45,651 vs 75,627; min coverage 0.212 vs 0). The mild seed also favours JalPriority (10,996 vs 40,923). Zero constraint violations everywhere.
+**Talking point:** FCFS rewards whoever calls first; nearest-first rewards whoever is closest; both abandon the far vulnerable wards (ar_02, ar_07, ar_03 get under 10% under both, vs 38% / 99.7% / 99.9% under JalPriority). The baselines travel less only because they serve fewer wards. On `scn_sa01_w06_severe`: JalPriority F-9 45,651.2 vs FCFS 71,266.3 vs nearest 75,626.5 (km 64.38 / 23.34 / 21.92). On `scn_sa01_w06_mild`: 10,996.3 vs 42,311.5 vs 42,694.3 (km 70.81 / 55.37 / 52.43). Zero constraint violations everywhere.
 
 ## What to say about the model
 XGBoost predicts each area's need for the next 12-hour window; shortfall = need − expected piped supply. On the held-out service areas (never trained on) the **simulation-only** test error is **MAE 883.6 L / RMSE 1,166.2 L** versus **1,161.7 / 1,523.4** for the "last observed" baseline (≈ 24% lower MAE). The data are synthetic, so this is not real-world accuracy; the "SYNTHETIC DATA · SIMULATION RESULTS" badge is always shown.

@@ -62,3 +62,6 @@ def derived_id(root: str, applied: list[dict]) -> str:
 * A is stateless w.r.t. debt: B passes `debt_by_area` (debt after window `window_index − 1`).
 * `time_limit_s` default 8.0, range [0.5, 9.5]; A responds within `time_limit_s + 1.0` s and never errors on a time limit.
 * Disruption on an existing derived id → 200 (idempotent), new → 201; errors 422 `DISRUPTION_INVALID`, 409 `DISRUPTION_NOT_APPLICABLE`.
+
+## Fixture advice for B's mock
+B's mock fixture `scn_sa01_w06.json` should also have request-time order ≠ distance order (one loud early mid-distance area, one quiet late near area) so the Compare screen shows three different columns during B's build. A's seeds do this: `ar_01` (5.8 km) is loud (1.45× its shortfall) and requests earliest; `ar_08` (4.57 km, 3rd nearest) is quiet (0.7×) and requests at 05:50; the far vulnerable wards request last.

@@ -128,6 +128,24 @@ Real app in-process, auth enabled, 3 seeds + 10 random 10-area/4-tanker scenario
 | prediction, cold (wall) | 98 ms | 111 ms | < 2 s |
 | replan chain (disruption + predict + solve @ 3.0) | 0.17 s | 0.50 s | < 4 s |
 
+## Baselines (`tests/e2e/test_e2e_baselines_differ.py`)
+
+FCFS (by request time) and nearest-first (by depot distance) per the B5 rules (target = requested litres floored to 100 L, first-fit tankers by id, route-limit check, stop at supply), scored with F-9 to F-14 (λ = 0.3, debt from history). The seeds decorrelate request order from distance, so the baselines differ; JalPriority beats both on every seed.
+
+| seed | strategy | priority-weighted unmet | total unmet L | min coverage | travel km |
+|---|---|---|---|---|---|
+| scn_sa01_w06 | JalPriority | 28,721.6 | 18,725 | 0.2259 | 65.12 |
+| | FCFS | 64,986.0 | 31,511 | 0.0000 | 38.74 |
+| | nearest-first | 62,604.6 | 29,513 | 0.0000 | 36.40 |
+| scn_sa01_w06_severe | JalPriority | 45,651.2 | 27,090 | 0.2120 | 64.38 |
+| | FCFS | 71,266.3 | 35,071 | 0.0000 | 23.34 |
+| | nearest-first | 75,626.5 | 37,845 | 0.0000 | 21.92 |
+| scn_sa01_w06_mild | JalPriority | 10,996.3 | 7,750 | 0.2321 | 70.81 |
+| | FCFS | 42,311.5 | 18,980 | 0.0000 | 55.37 |
+| | nearest-first | 42,694.3 | 18,980 | 0.0000 | 52.43 |
+
+The baselines travel less only because they serve fewer wards.
+
 ## Image check
 `docker build` was **not run** (Docker unavailable on the build host). `python scripts/simulate_image.py` reproduces the image instead (exact COPY layout in a temp dir, fresh Python 3.12 venv with `requirements.txt` only, the Dockerfile CMD/ENV, HEALTHCHECK, then health/scenarios/predictions/model/solve/disruption smoke tests): **PASS** for `backend/Dockerfile` and `infra/lambda.Dockerfile`. `infra/template.yaml` is `cfn-lint` clean with least-privilege IAM. See `DEMO_A.md` and `HANDOFF_FOR_B.md` for the demo and the merge hand-off.
 
