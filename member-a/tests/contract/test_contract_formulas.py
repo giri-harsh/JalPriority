@@ -160,6 +160,44 @@ def test_path_km_and_violation_counter_agree_with_the_golden_fixture(load_fixtur
     assert count_violations(scenario, too_far) >= 1
 
 
+def _mutate(plan, path, value):
+    broken = copy.deepcopy(plan)
+    target = broken
+    for key in path[:-1]:
+        target = target[key]
+    target[path[-1]] = value
+    return broken
+
+
+@pytest.mark.parametrize(
+    "path,value",
+    [
+        (("allocations", 0, "priority_weight"), 2.6858),
+        (("allocations", 1, "urgency"), 0.2728),
+        (("allocations", 1, "debt_normalized"), 0.6666),
+        (("allocations", 0, "vulnerability_used"), 0.79),
+        (("allocations", 2, "coverage_ratio"), 0.357),
+        (("allocations", 2, "unmet_litres"), 8900),
+        (("allocations", 2, "predicted_shortfall_litres"), 14100),
+        (("routes", 0, "route_km"), 24.41),
+        (("totals", "travel_km"), 37.3),
+        (("totals", "unmet_litres"), 9100),
+        (("totals", "shortfall_litres"), 29100),
+        (("totals", "tanker_capacity_available_litres"), 32000),
+        (("constraint_check", "water_cap_ok"), False),
+    ],
+)
+def test_formula_checker_detects_a_tampered_plan(load_fixture, path, value):
+    """Guards the checker itself: a single wrong field in an otherwise correct plan must fail assert_formulas."""
+    scenario = load_fixture("contract_scenario_example")
+    prediction = load_fixture("contract_prediction_example")
+    request = load_fixture("contract_solve_request_example")
+    plan = load_fixture("contract_plan_result_example")
+    assert_formulas(scenario, prediction, request["weights"], request["debt_by_area"], plan)
+    with pytest.raises(AssertionError):
+        assert_formulas(scenario, prediction, request["weights"], request["debt_by_area"], _mutate(plan, path, value))
+
+
 # --------------------------------------------------------------------------- edge cases through a fake container
 @pytest.fixture()
 def edge_world(load_fixture):
@@ -179,7 +217,7 @@ def _solve_fake(settings, make_token, scenario, prediction, weights, debt):
     return r.json()
 
 
-def test_no_shortfall_and_unavailable_vulnerability_edge_cases(settings, edge_world):
+def test_no_shortfall_and_unavailable_vulnerability_edge_cases(settings, make_token, edge_world):
     """F-1 clamps at 0 (need below piped), F-2 is 0 for need 0, F-4 is 0 when vulnerability is unavailable."""
     scenario, prediction = copy.deepcopy(edge_world[0]), copy.deepcopy(edge_world[1])
     by_area = {p["area_id"]: p for p in prediction["areas"]}
@@ -191,7 +229,7 @@ def test_no_shortfall_and_unavailable_vulnerability_edge_cases(settings, edge_wo
     weights = {"urgency": 1.0, "debt": 1.0, "vulnerability": 0.5, "travel": 20.0}
     debt = {"ar_01": 3000, "ar_02": 8000, "ar_03": 12000}
 
-    plan = _solve_fake(settings, scenario, prediction, weights, debt)
+    plan = _solve_fake(settings, make_token, scenario, prediction, weights, debt)
     assert_formulas(scenario, prediction, weights, debt, plan)
     allocs = {a["area_id"]: a for a in plan["allocations"]}
     assert allocs["ar_01"]["predicted_shortfall_litres"] == 0 and allocs["ar_01"]["coverage_ratio"] == 1.0
@@ -202,13 +240,13 @@ def test_no_shortfall_and_unavailable_vulnerability_edge_cases(settings, edge_wo
     assert plan["unserved"] == []
 
 
-def test_zero_total_shortfall_plan_is_empty_but_valid(settings, edge_world):
+def test_zero_total_shortfall_plan_is_empty_but_valid(settings, make_token, edge_world):
     scenario, prediction = copy.deepcopy(edge_world[0]), copy.deepcopy(edge_world[1])
     for p in prediction["areas"]:
         p["predicted_need_litres"] = p["expected_piped_litres"] - 1000
         p["predicted_shortfall_litres"] = 0
     weights = {"urgency": 1.0, "debt": 1.0, "vulnerability": 0.5, "travel": 20.0}
-    plan = _solve_fake(settings, scenario, prediction, weights, {"ar_02": 100})
+    plan = _solve_fake(settings, make_token, scenario, prediction, weights, {"ar_02": 100})
     assert_formulas(scenario, prediction, weights, {"ar_02": 100}, plan)
     assert plan["totals"]["allocated_litres"] == 0 and plan["totals"]["travel_km"] == 0.0
     assert all(r["status"] in {"idle", "unavailable"} for r in plan["routes"])

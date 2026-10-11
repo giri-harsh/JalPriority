@@ -20,17 +20,12 @@ from jp_a.domain.entities import (
 )
 
 from ..property.property_helpers import count_violations, plan_problems
-from .e2e_helpers import (  # noqa: F401  (fixtures)
+from .e2e_helpers import (
     DEFAULT_WEIGHTS,
     MAIN_ID,
     SEED_IDS,
     WIDE_ID,
-    api,
-    client_a,
-    data_dir,
-    e2e_settings,
     expected_supply_after_cut,
-    headers,
     solve_body,
 )
 

@@ -13,12 +13,10 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
-import pytest
 from fastapi.testclient import TestClient
 
 from jp_a.data.debt import debt_by_area
 from jp_a.domain.entities import PredictionSet, Scenario
-from jp_a.main import create_app
 
 MEMBER_A_DIR = Path(__file__).resolve().parents[2]
 REAL_DATA_DIR = MEMBER_A_DIR / "data"
@@ -208,32 +206,7 @@ def expected_supply_after_cut(supply: int, fraction: float) -> int:
     return max(0, math.floor(exact) * 100)
 
 
-# --------------------------------------------------------------------------- shared fixtures
-# Import these into a test module (``from .e2e_helpers import api, data_dir, headers  # noqa: F401``); they are
-# session scoped, so one real app (committed model + data copy + real token) serves the whole e2e suite.
-@pytest.fixture(scope="session")
-def data_dir(tmp_path_factory) -> Path:
-    path = copy_real_data(tmp_path_factory.mktemp("e2e_data"))
-    write_wide_scenario(path)
-    return path
-
-
-@pytest.fixture(scope="session")
-def e2e_settings(settings, data_dir):
-    return settings.model_copy(update={"a_data_dir": data_dir, "a_models_dir": REAL_MODELS_DIR})
-
-
-@pytest.fixture(scope="session")
-def api(e2e_settings):
-    with TestClient(create_app(e2e_settings)) as client:
-        yield client
-
-
-@pytest.fixture(scope="session")
-def headers(make_token) -> dict[str, str]:
-    return {"Authorization": f"Bearer {make_token()}"}
-
-
+# --------------------------------------------------------------------------- API wrapper
 class Client:
     """Thin typed wrapper over the TestClient: every call carries the dispatcher token."""
 
@@ -257,8 +230,3 @@ class Client:
         return self.http.post(
             f"/a/v1/scenarios/{scenario_id}/disruptions", json={"type": dtype, "params": params}, headers=self.headers
         )
-
-
-@pytest.fixture(scope="session")
-def client_a(api, headers) -> Client:
-    return Client(api, headers)

@@ -14,10 +14,10 @@ _Last updated: M0/M1 done by LEAD; wave-1 agents (DATA, ML, OPT, UI) about to la
 | M6 | CP-SAT allocation + greedy fallback (golden solve) | OPT | ✅ |
 | M7 | Routing + PlanResult assembly + explanations; route 6.6 | OPT | ✅ |
 | M8 | Disruption endpoint 6.4 | LEAD | ✅ |
-| M9 | Property + full contract suite + e2e | QA | ⏳ |
+| M9 | Property + full contract suite + e2e | QA | ✅ |
 | M10 | Dashboard (types, api, screens, harness) | UI | ✅ |
-| M11 | Dockerfile + README | QA / LEAD | ⏳ |
-| M12 | AWS stretch (S3 / SageMaker / SAM) | QA | ⏳ (last) |
+| M11 | Dockerfile + README | QA / LEAD | ✅ |
+| M12 | AWS stretch (code + SAM template; NOT deployed, no credentials) | QA | ✅ |
 
 ## Agents (file ownership — never cross)
 - DATA: `jp_a/data/**`, `data/**`, `scripts/generate_data.sh`, `repositories/scenario_repo.py`, `repositories/storage_local.py`, `tests/unit/test_data_*.py`
@@ -35,14 +35,12 @@ _Last updated: M0/M1 done by LEAD; wave-1 agents (DATA, ML, OPT, UI) about to la
 - No Claude attribution in commits: local `commit-msg` hook + `member-a/.claude/settings.json`.
 
 ## Last green test run
-pytest: 552 passed (wave 1). Dashboard: typecheck ok, vitest 150 passed, build ok. XGB MAE 883.6/RMSE 1166.2 vs baseline 1161.7/1523.4.
+pytest 1080 passed, 1 skipped; dashboard typecheck ok, vitest 150 passed, build ok; live uvicorn smoke ok.
 
 ## Known failures
 none
 
 ## Next 3 actions
-(wave 2 = QA: contract/property/e2e tests, Dockerfile, infra/AWS stretch; then README finalize + DoD check)
-
-1. Commit M0/M1; launch wave 1 workflow (DATA → ML-train chain, OPT, UI in parallel).
-2. LEAD: write `tests/unit/test_disruptions.py` while agents run; wip-commit snapshots every ~20 min.
-3. After wave 1: integrate, run full suite, launch wave 2 (QA contract/property/e2e + Dockerfile + review loop).
+1. Integration (humans, later): follow integration/INTEGRATION.md once B is ready.
+2. Optional: run `docker build -f backend/Dockerfile .` on a host with Docker.
+3. Optional: deploy infra/template.yaml when AWS credentials exist.

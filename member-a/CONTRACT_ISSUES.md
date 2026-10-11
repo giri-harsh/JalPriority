@@ -22,3 +22,13 @@ Format: section · problem · workaround in use · proposed fix. `contracts/CONT
 - **Problem:** the contract defines `label` only for the example seed.
 - **Workaround:** derived scenarios get `"<parent label> · <disruption description>"` (see `scenario_repo.py`).
 - **Proposed fix:** none needed; informational.
+
+## CI-5 · §4.2 — derived-id regex accepts multiple `__`
+- **Problem:** `^scn_[a-z0-9_]+__d\d+_[0-9a-f]{6}$` also matches `scn_a__b__d1_abcdef`.
+- **Workaround:** `is_valid_scenario_id` additionally requires the root to contain no `__`; such ids are reported as not found.
+- **Proposed fix:** tighten the regex to `^scn_[a-z0-9]+(?:_[a-z0-9]+)*__d\d+_[0-9a-f]{6}$`.
+
+## CI-6 · §5.2 — `weights` "required" but with per-field defaults
+- **Problem:** the table gives defaults for every weight field while §6 says `weights` is required.
+- **Workaround:** the object is required; missing individual fields take the §5.2 defaults.
+- **Proposed fix:** clarify that partial weights objects are allowed (or forbidden).
