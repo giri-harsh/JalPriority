@@ -231,16 +231,17 @@ def plan_problems(
         got = a["allocated_litres"]
         if a["predicted_shortfall_litres"] != shortfall:
             out.append(f"{a['area_id']}: shortfall {a['predicted_shortfall_litres']} != F-1 {shortfall}")
-        if not 0 <= got <= shortfall:
-            out.append(f"{a['area_id']}: allocated {got} outside [0, {shortfall}]")
+        cap = -(-shortfall // DELIVERY_UNIT) * DELIVERY_UNIT  # the shortfall rounded up to whole 100 L units
+        if not 0 <= got <= cap:
+            out.append(f"{a['area_id']}: allocated {got} outside [0, {cap}]")
         if got % DELIVERY_UNIT:
             out.append(f"{a['area_id']}: allocated {got} is not a multiple of 100")
         if got != sum(d["litres"] for d in a["deliveries"]):
             out.append(f"{a['area_id']}: allocated {got} != sum of deliveries")
         if any(d["litres"] % DELIVERY_UNIT or d["litres"] <= 0 for d in a["deliveries"]):
             out.append(f"{a['area_id']}: delivery not a positive multiple of 100")
-        if a["unmet_litres"] != shortfall - got:  # F-6
-            out.append(f"{a['area_id']}: unmet {a['unmet_litres']} != {shortfall - got}")
+        if a["unmet_litres"] != max(0, shortfall - got):  # F-6
+            out.append(f"{a['area_id']}: unmet {a['unmet_litres']} != {max(0, shortfall - got)}")
         expected_cov = 1.0 if shortfall == 0 else round(min(1.0, got / shortfall), 4)  # F-7
         if a["coverage_ratio"] != expected_cov:
             out.append(f"{a['area_id']}: coverage {a['coverage_ratio']} != {expected_cov}")
@@ -253,6 +254,8 @@ def plan_problems(
             out.append(f"{a['area_id']}: need exactly one served-state reason, got {codes}")
         if a["unmet_litres"] > 0 and not (set(codes) & UNSERVED_CODES):
             out.append(f"{a['area_id']}: unmet > 0 but no unserved cause in {codes}")
+        if a["unmet_litres"] == 0 and set(codes) & UNSERVED_CODES:
+            out.append(f"{a['area_id']}: no unmet litres but an unserved cause / LOWER_RELATIVE_PRIORITY in {codes}")
 
     allocated_total = sum(a["allocated_litres"] for a in allocs)
     if allocated_total > supply:
@@ -269,6 +272,11 @@ def plan_problems(
     for u in unserved:
         if u["unmet_litres"] != by_area[u["area_id"]]["unmet_litres"] or u["unmet_litres"] <= 0:
             out.append(f"unserved {u['area_id']}: unmet mismatch")
+        # Sub-100 L residue is never listed as a priority decision: an optimal plan with spare water, capacity
+        # and route would always add the last (rounded-up) unit, so a small remainder must have a hard cause.
+        if 0 < u["unmet_litres"] < DELIVERY_UNIT and data["solver"]["status"] == "optimal":
+            if u["reason_code"] == "LOWER_RELATIVE_PRIORITY":
+                out.append(f"unserved {u['area_id']}: {u['unmet_litres']} L rounding residue listed as lower priority")
 
     if sorted(r["tanker_id"] for r in data["routes"]) != sorted(tankers):
         out.append("routes do not list every tanker exactly once")

@@ -32,3 +32,8 @@ Format: section · problem · workaround in use · proposed fix. `contracts/CONT
 - **Problem:** the table gives defaults for every weight field while §6 says `weights` is required.
 - **Workaround:** the object is required; missing individual fields take the §5.2 defaults.
 - **Proposed fix:** clarify that partial weights objects are allowed (or forbidden).
+
+## CI-7 · MEMBER_A F3 vs real-world rounding — per-area cap is ceil, not floor
+- **Problem:** MEMBER_A F3 caps each area at `floor(sf/100)` units and counts the sub-100 L remainder as unmet. That produced fake `unserved[]` entries (e.g. 21 L, 4 L) with reason `LOWER_RELATIVE_PRIORITY` although the area was served in full.
+- **Workaround (implemented):** cap = `ceil(sf/100)` units; an area may receive up to 99 L more than its shortfall (CONTRACT F-6 `max(0, sf − allocated)` and F-7 already handle this); `LOWER_RELATIVE_PRIORITY` only for bottom-third areas with unmet > 0. Side effect: `allocated_litres` may exceed `predicted_shortfall_litres` by < 100 L, so `allocated ≤ predicted_shortfall` (MEMBER_A F3) no longer holds exactly.
+- **Proposed fix:** amend MEMBER_A F3 / state in the contract that deliveries are whole 100 L units and over-allocation by < 100 L is allowed. B must not assume `allocated ≤ shortfall`; B's baselines already may exceed it (B5).

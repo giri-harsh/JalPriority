@@ -28,7 +28,6 @@ from ..domain.constraints import (
     KM_DP,
     build_constraint_check,
     distance,
-    litres_to_units,
     route_km,
 )
 from ..domain.entities import (
@@ -301,7 +300,6 @@ def _area_facts(
         predicted_need_litres=rec.predicted_need_litres,
         expected_piped_litres=rec.expected_piped_litres,
         shortfall_litres=rec.shortfall_litres,
-        deliverable_litres=litres_to_units(rec.shortfall_litres) * DELIVERY_UNIT_LITRES,
         allocated_litres=allocated_litres,
         depot_distance_km=distance(scenario.distance_km, scenario.depot.depot_id, rec.area_id),
         depot_metres=depot_metres,

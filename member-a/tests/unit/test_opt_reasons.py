@@ -35,7 +35,6 @@ def make_area(**overrides) -> AreaFacts:
         predicted_need_litres=30_000,
         expected_piped_litres=21_000,
         shortfall_litres=9_000,
-        deliverable_litres=9_000,
         allocated_litres=9_000,
         depot_distance_km=4.0,
         depot_metres=4_000,
@@ -119,7 +118,7 @@ def test_golden_areas_do_not_get_heat_alert():
     [(0, 0, "NO_SHORTFALL"), (9_000, 0, "NOT_SERVED"), (9_000, 9_000, "FULLY_SERVED"), (9_000, 4_000, "PARTIALLY_SERVED")],
 )
 def test_served_code(shortfall, allocated, expected):
-    assert served_code(make_area(shortfall_litres=shortfall, deliverable_litres=shortfall, allocated_litres=allocated)) == expected
+    assert served_code(make_area(shortfall_litres=shortfall, allocated_litres=allocated)) == expected
 
 
 def _partial(**overrides) -> AreaFacts:
@@ -128,7 +127,7 @@ def _partial(**overrides) -> AreaFacts:
 
 def test_no_cause_without_unmet_litres():
     assert unmet_cause(make_area(), make_plan()) is None
-    assert unmet_cause(make_area(shortfall_litres=0, deliverable_litres=0, allocated_litres=0), make_plan()) is None
+    assert unmet_cause(make_area(shortfall_litres=0, allocated_litres=0), make_plan()) is None
 
 
 def test_cause_no_water_or_no_tanker_at_all():
@@ -137,9 +136,18 @@ def test_cause_no_water_or_no_tanker_at_all():
     assert unmet_cause(_partial(allocated_litres=0), plan) == "TANKER_CAPACITY_LIMIT"
 
 
-def test_cause_sub_unit_remainder():
-    area = make_area(shortfall_litres=9_050, deliverable_litres=9_000, allocated_litres=9_000)
-    assert unmet_cause(area, make_plan(allocated_units=200)) == "LOWER_RELATIVE_PRIORITY"
+def test_over_delivery_by_whole_units_is_fully_served_without_a_cause():
+    """The optimizer rounds the per-area cap UP: 9,100 L against 9,050 L is full service, not a remainder."""
+    area = make_area(shortfall_litres=9_050, allocated_litres=9_100, priority_weight=1.1)  # bottom third
+    assert area.unmet_litres == 0
+    assert unmet_cause(area, make_plan(allocated_units=200)) is None
+    assert served_code(area) == "FULLY_SERVED"
+    assert reason_codes(area, make_plan(allocated_units=200)) == ["FULLY_SERVED"]
+
+
+def test_small_unmet_when_water_runs_out_is_supply_exhausted():
+    area = make_area(shortfall_litres=9_050, allocated_litres=9_000)
+    assert unmet_cause(area, make_plan(allocated_units=200)) == "SUPPLY_EXHAUSTED"
 
 
 def test_cause_unreachable_area_is_route_limit_even_when_water_runs_out():
@@ -189,9 +197,40 @@ def test_reason_order_matches_the_contract_example():
 
 
 def test_lower_relative_priority_is_never_duplicated():
-    area = make_area(priority_weight=1.1, shortfall_litres=9_050, deliverable_litres=9_000)  # bottom third + remainder
-    codes = reason_codes(area, make_plan())
+    tanker = make_tanker(spare_units=40)  # visits ar_02 with room: the residual cause is lower relative priority
+    area = _partial(priority_weight=1.1)  # bottom third and the residual cause
+    codes = reason_codes(area, make_plan(tankers=(tanker,)))
     assert codes == ["LOWER_RELATIVE_PRIORITY", "PARTIALLY_SERVED"]
+
+
+@pytest.mark.parametrize("allocated", [9_000, 9_100])
+def test_fully_served_bottom_third_area_never_gets_lower_relative_priority(allocated):
+    area = make_area(priority_weight=1.1, allocated_litres=allocated)  # bottom third (cutoff 1.2)
+    for status in ("optimal", "heuristic"):
+        codes = reason_codes(area, make_plan(solver_status=status))
+        assert "LOWER_RELATIVE_PRIORITY" not in codes and "FULLY_SERVED" in codes
+    explanation = explain_area(area, make_plan(), higher_priority_served=True)
+    assert explanation.unserved_reason_code is None
+    assert "remain unserved" not in explanation.reason_text
+
+
+def test_no_shortfall_bottom_third_area_never_gets_lower_relative_priority():
+    area = make_area(priority_weight=1.0, shortfall_litres=0, allocated_litres=0)
+    assert reason_codes(area, make_plan()) == ["NO_SHORTFALL"]
+
+
+def test_bottom_third_with_unmet_litres_gets_lower_relative_priority():
+    area = _partial(priority_weight=1.1)
+    assert reason_codes(area, make_plan(allocated_units=200)) == [
+        "LOWER_RELATIVE_PRIORITY",
+        "PARTIALLY_SERVED",
+        "SUPPLY_EXHAUSTED",
+    ]
+    # Above the bottom third, the same shortage carries only its cause.
+    assert reason_codes(_partial(priority_weight=1.8), make_plan(allocated_units=200)) == [
+        "PARTIALLY_SERVED",
+        "SUPPLY_EXHAUSTED",
+    ]
 
 
 def test_bottom_third_never_labels_the_top_priority():
@@ -235,7 +274,7 @@ def test_every_reason_has_exactly_the_contract_params():
     tanker = make_tanker(spare_units=40, visits=frozenset({"ar_05"}))
     travel = build_reasons(_partial(), make_plan(tankers=(tanker,)))
     assert {r.code: r.params for r in travel}["TRAVEL_COST_TRADEOFF"] == {"distance_from_depot_km": 4.0, "travel_weight": 20.0}
-    none = build_reasons(make_area(shortfall_litres=0, deliverable_litres=0, allocated_litres=0), make_plan())
+    none = build_reasons(make_area(shortfall_litres=0, allocated_litres=0), make_plan())
     assert {r.code: r.params for r in none}["NO_SHORTFALL"] == {}
 
 
@@ -280,7 +319,6 @@ def test_partial_supply_text_matches_the_contract_example():
         priority_weight=1.4093,
         urgency=0.2593,
         shortfall_litres=14_000,
-        deliverable_litres=14_000,
         allocated_litres=5_000,
     )
     assert _text(ar_01, make_plan(allocated_units=200)) == (
@@ -332,9 +370,9 @@ def test_partial_supply_text_matches_the_contract_example():
         ),
         (
             {"allocated_units": 200},
-            {"shortfall_litres": 9_050, "deliverable_litres": 9_000, "allocated_litres": 9_000},
+            {"shortfall_litres": 9_050, "allocated_litres": 9_000},
             True,
-            "tanker deliveries are planned in whole 100 L units",
+            "all 20,000 L of tanker water went to higher-priority areas first",
         ),
     ],
 )
@@ -355,7 +393,7 @@ def test_not_served_and_profiles():
 
 
 def test_no_shortfall_text():
-    area = make_area(shortfall_litres=0, deliverable_litres=0, allocated_litres=0, predicted_need_litres=38_000, expected_piped_litres=40_000)
+    area = make_area(shortfall_litres=0, allocated_litres=0, predicted_need_litres=38_000, expected_piped_litres=40_000)
     explanation = explain_area(area, make_plan(), higher_priority_served=True)
     assert explanation.reason_text == (
         "No tanker water needed: expected piped supply (40,000 L) covers the predicted need (38,000 L)."
@@ -365,7 +403,7 @@ def test_no_shortfall_text():
 
 @pytest.mark.parametrize("allocated,expected", [(100, "(1%)"), (19_950, "(99%)"), (7_150, "(36%)")])
 def test_partial_percentages_never_read_as_zero_or_full(allocated, expected):
-    area = make_area(shortfall_litres=20_000, deliverable_litres=20_000, allocated_litres=allocated)
+    area = make_area(shortfall_litres=20_000, allocated_litres=allocated)
     assert expected in _text(area, make_plan(allocated_units=200))
 
 

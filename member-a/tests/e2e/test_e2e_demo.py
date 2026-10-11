@@ -213,10 +213,15 @@ def test_baselines_waste_water_on_over_requesters_jalpriority_does_not(world):
     scenario, prediction, plan = world[MAIN_ID]
     sf = shortfalls(prediction)
     loud = over_requesting_areas(scenario, prediction)
+    jp = {a.area_id: a.allocated_litres for a in plan.allocations}
+    # JalPriority rounds each area up to whole 100 L units at most: under 100 L of excess per area
+    assert all(a.allocated_litres <= -(-a.predicted_shortfall_litres // 100) * 100 for a in plan.allocations)
+    assert all(a.allocated_litres - a.predicted_shortfall_litres < 100 for a in plan.allocations)
+    jp_waste = wasted_litres(jp, sf)
+    assert jp_waste < 100 * len(sf)
     for allocation in (fcfs_allocation(scenario), nearest_first_allocation(scenario)):
-        assert wasted_litres(allocation, sf) > 0
+        assert wasted_litres(allocation, sf) > max(jp_waste, 100 * len(sf))
         assert any(allocation[a] > sf[a] for a in loud)  # served beyond the predicted shortfall
-    assert all(a.allocated_litres <= a.predicted_shortfall_litres for a in plan.allocations)
 
 
 def test_jalpriority_follows_priority_not_arrival_or_distance(world):
@@ -232,3 +237,30 @@ def test_jalpriority_follows_priority_not_arrival_or_distance(world):
     loud = over_requesting_areas(scenario, prediction)
     ranks = {a.area_id: a.rank for a in plan.allocations}
     assert all(ranks[a] > len(ranks) // 2 for a in loud)
+
+
+@pytest.mark.parametrize("scenario_id", SEED_IDS)
+def test_unserved_lists_only_real_shortages_never_rounding_residue(world, scenario_id):
+    """Each area is capped at its shortfall rounded UP to 100 L, so no sub-100 L remainder shows as unserved."""
+    _, _, plan = world[scenario_id]
+    by_id = {a.area_id: a for a in plan.allocations}
+    assert [u.area_id for u in plan.unserved] == [a.area_id for a in plan.allocations if a.unmet_litres > 0]
+    for u in plan.unserved:
+        assert u.unmet_litres > 0 and u.unmet_litres == by_id[u.area_id].unmet_litres
+        assert u.unmet_litres >= 100 or u.reason_code != "LOWER_RELATIVE_PRIORITY", u
+    for a in plan.allocations:
+        codes = [r.code for r in a.reasons]
+        if a.unmet_litres == 0:
+            assert "LOWER_RELATIVE_PRIORITY" not in codes, (a.area_id, codes)
+            assert a.coverage_ratio == 1.0
+        assert a.allocated_litres <= -(-a.predicted_shortfall_litres // 100) * 100
+
+
+def test_main_seed_top_areas_are_served_in_full(world):
+    """ar_07 (shortfall 6,821 L) and ar_03 (3,804 L) get 6,900 / 3,900 L: full service, not a 21 / 4 L remainder."""
+    _, _, plan = world[MAIN_ID]
+    by_id = {a.area_id: a for a in plan.allocations}
+    for area_id, delivered in (("ar_07", 6_900), ("ar_03", 3_900)):
+        a = by_id[area_id]
+        assert (a.allocated_litres, a.unmet_litres, a.coverage_ratio) == (delivered, 0, 1.0), area_id
+    assert {"ar_07", "ar_03"}.isdisjoint(u.area_id for u in plan.unserved)

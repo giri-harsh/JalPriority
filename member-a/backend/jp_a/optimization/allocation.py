@@ -3,7 +3,7 @@
 Formulation (units of 100 L; only AVAILABLE tankers take part)
 -------------------------------------------------------------
 Data, for area i (in rank order) and available tanker k:
-  s_i  = floor(sf_i / 100)                       whole deliverable units of the predicted shortfall
+  s_i  = ceil(sf_i / 100)                        whole units that cover the predicted shortfall in full
   c_i  = min(s_i, ceil((1 - phi) * sf_i / 100))  "normal" deficit allowance; phi = A_COVERAGE_FLOOR (0.25)
   P_i  = round(p_i * 1000 * 100)                 priority cost per unmet unit (p_i = F-5 priority)
   K_i  = round(kappa * P_i)                      cost per unmet unit below the coverage floor; kappa = A_FLOOR_PENALTY
@@ -16,7 +16,7 @@ Variables:
   Pairs with 2 * d(depot, i) > R_k cannot be visited at all and get no variables.
 
 Constraints:
-  x_i = sum_k y[k,i] <= s_i                      (never more than the shortfall)
+  x_i = sum_k y[k,i] <= s_i                      (never more than the shortfall rounded up to whole units)
   sum_i y[k,i] <= C_k                            (tanker capacity)
   sum_{k,i} y[k,i] <= S                          (total tanker water)
   sum_i 2 * d(depot, i) * z[k,i] <= R_k          (star route bound, d in whole metres rounded up; with a metric
@@ -29,7 +29,13 @@ Unmet and objective:
          =  sum_i (P_i * u_i + (K_i - P_i) * u2_i) + sum_{k,i} T_i * z[k,i]
 
 ``u2_i`` is pinned with an exact max-equality, so the objective is correct for any kappa (with kappa >= 1 it is
-the convex split of the specification). Consecutive identical available tankers (same C_k and R_k) are
+the convex split of the specification).
+
+Litre rounding: deliveries are whole 100 L units and the per-area cap rounds the shortfall UP, so an area can
+always be served in full; it may then receive up to 99 L more than its shortfall (F-6 unmet = max(0, sf -
+allocated) is 0 and F-7 coverage is 1.0). Unmet litres therefore appear only when x_i < s_i, i.e. a real
+shortage of water, capacity or route, never as sub-100 L rounding residue. Supply and capacity are rounded
+DOWN, so the plan never exceeds either. Consecutive identical available tankers (same C_k and R_k) are
 symmetry-broken by load (load_k >= load_k+1); this removes only mirror-image solutions.
 
 Solve and determinism
@@ -49,7 +55,7 @@ is logged as ``canonicalisation_time_limited``). If stage 2 finds nothing, the s
 
 Fallback
 --------
-``solve_greedy`` fills areas in rank order, first up to the coverage floor and then to the full shortfall,
+``solve_greedy`` fills areas in rank order, first up to the coverage floor and then to the full shortfall (s_i),
 using tankers that already visit the area before opening new stops, and never breaking capacity, supply or
 the star route bound. It is always feasible.
 """
@@ -71,6 +77,7 @@ from ..domain.constraints import (
     km_to_metres_down,
     km_to_metres_up,
     litres_to_units,
+    litres_to_units_up,
 )
 from ..domain.entities import Scenario, Weights
 from ..domain.priority import AreaPriority
@@ -92,7 +99,7 @@ PairKey = tuple[str, str]  # (tanker_id, area_id)
 @dataclass(frozen=True)
 class AreaInput:
     area_id: str
-    shortfall_units: int
+    shortfall_units: int  # s_i = ceil(sf_i / 100): the per-area cap in delivery units
     normal_deficit_cap: int
     priority_coef: int
     floor_coef: int
@@ -153,7 +160,7 @@ def build_problem(
     areas = []
     for rec in ranked:
         shortfall = rec.shortfall_litres
-        units = litres_to_units(shortfall)
+        units = litres_to_units_up(shortfall)
         normal_cap = min(units, math.ceil(round((1.0 - coverage_floor) * shortfall / DELIVERY_UNIT_LITRES, 9)))
         priority_coef = round(rec.priority_weight * 1000 * DELIVERY_UNIT_LITRES)
         depot_km = distance(scenario.distance_km, depot_id, rec.area_id)

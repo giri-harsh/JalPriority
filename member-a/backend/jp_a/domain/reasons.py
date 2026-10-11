@@ -7,8 +7,9 @@ Rules, evaluated on the 4 dp wire values so a client re-checking a response reac
   HEAT_ALERT                 alert >= 2 and heat_exposure >= 0.7, only when none of the three above applies
                              (CONTRACT_ISSUES CI-1: the binding 5.6 example lists no HEAT_ALERT for areas that
                              already have another driver)
-  LOWER_RELATIVE_PRIORITY    p in the bottom third (lowest ceil(N/3) priorities, ties included, never the top
-                             priority), or as the residual unmet cause
+  LOWER_RELATIVE_PRIORITY    only for an area with unmet litres: p in the bottom third (lowest ceil(N/3)
+                             priorities, ties included, never the top priority), or as the residual unmet cause.
+                             A fully served area never carries it.
   exactly one of FULLY_SERVED / PARTIALLY_SERVED / NOT_SERVED / NO_SHORTFALL
   one unmet cause when unmet > 0 (see ``unmet_cause``)
   TIME_LIMITED_SOLUTION      on every area when the plan is ``time_limited`` or ``heuristic``
@@ -76,7 +77,6 @@ class AreaFacts:
     predicted_need_litres: int
     expected_piped_litres: int
     shortfall_litres: int
-    deliverable_litres: int  # the shortfall rounded down to whole 100 L delivery units
     allocated_litres: int
     depot_distance_km: float
     depot_metres: int  # the optimizer's (rounded-up) view of the depot distance
@@ -160,18 +160,13 @@ def served_code(area: AreaFacts) -> str:
     return "PARTIALLY_SERVED"
 
 
-def is_unit_remainder(area: AreaFacts) -> bool:
-    """Unmet only because the shortfall is not a whole number of 100 L delivery units."""
-    return area.unmet_litres > 0 and area.allocated_litres >= area.deliverable_litres
-
-
 def unmet_cause(area: AreaFacts, plan: PlanFacts) -> str | None:
     """The single cause of an area's unmet litres (``None`` when nothing is unmet).
 
-    Checked in order: no water at all, no tanker at all, a sub-100 L remainder, an area no tanker can reach
-    even alone (or whose stop was cut in route repair), the total water bound binding, all available capacity
+    Checked in order: no water at all, no tanker at all, an area no tanker can reach even alone (or whose stop was cut in route repair), the total water bound binding, all available capacity
     used, no tanker that could add the area within its route bound, an extra stop not worth its travel cost,
-    and finally lower relative priority.
+    and finally lower relative priority. The optimizer caps each area at its shortfall rounded UP to whole
+    100 L units, so unmet litres are always a real shortage (never sub-100 L rounding residue).
     """
     if area.unmet_litres == 0:
         return None
@@ -179,8 +174,6 @@ def unmet_cause(area: AreaFacts, plan: PlanFacts) -> str | None:
         return "SUPPLY_EXHAUSTED"
     if plan.capacity_units == 0:
         return "TANKER_CAPACITY_LIMIT"
-    if is_unit_remainder(area):
-        return "LOWER_RELATIVE_PRIORITY"
     if area.area_id in plan.route_dropped or not any(t.can_ever_reach(area) for t in plan.tankers):
         return "ROUTE_LIMIT"
     if plan.allocated_units >= plan.supply_units:
@@ -199,7 +192,7 @@ def reason_codes(area: AreaFacts, plan: PlanFacts) -> list[str]:
     """Ordered reason codes for an area (see the module docstring)."""
     cause = unmet_cause(area, plan)
     codes = driver_codes(area, plan)
-    if is_bottom_third(area, plan) or cause == "LOWER_RELATIVE_PRIORITY":
+    if cause is not None and (is_bottom_third(area, plan) or cause == "LOWER_RELATIVE_PRIORITY"):
         codes.append("LOWER_RELATIVE_PRIORITY")
     codes.append(served_code(area))
     if cause is not None and cause not in codes:

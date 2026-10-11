@@ -47,8 +47,13 @@ def route_km(path: Sequence[str], distance_km: Mapping[str, Mapping[str, float]]
 
 
 def litres_to_units(litres: int) -> int:
-    """Whole 100 L delivery units that fit in ``litres`` (the remainder below 100 L is undeliverable)."""
+    """Whole 100 L delivery units that fit in ``litres`` (rounded DOWN: used for supply and tanker capacity)."""
     return max(0, int(litres)) // DELIVERY_UNIT_LITRES
+
+
+def litres_to_units_up(litres: int) -> int:
+    """Whole 100 L delivery units needed to cover ``litres`` in full (rounded UP: 6,821 L -> 69 units)."""
+    return -(-max(0, int(litres)) // DELIVERY_UNIT_LITRES)
 
 
 def km_to_metres_up(km: float) -> int:

@@ -87,9 +87,31 @@ def test_allocation_never_exceeds_shortfall_supply_or_capacity(solved_cases):
     for seed, (scenario, prediction, _, _, plan, _) in solved_cases.items():
         shortfall = {p.area_id: max(0, p.predicted_need_litres - p.expected_piped_litres) for p in prediction.areas}
         capacity = {t.tanker_id: t.capacity_litres for t in scenario.tankers}
-        assert all(a.allocated_litres <= shortfall[a.area_id] for a in plan.allocations), f"seed {seed}"
+        # whole 100 L units, capped at the shortfall rounded UP; F-6 / F-7 absorb the (< 100 L) excess
+        assert all(a.allocated_litres <= -(-shortfall[a.area_id] // 100) * 100 for a in plan.allocations), f"seed {seed}"
+        assert all(a.unmet_litres == max(0, shortfall[a.area_id] - a.allocated_litres) for a in plan.allocations)
+        assert all(
+            a.coverage_ratio == (1.0 if shortfall[a.area_id] == 0 else round(min(1, a.allocated_litres / shortfall[a.area_id]), 4))
+            for a in plan.allocations
+        ), f"seed {seed}"
         assert sum(a.allocated_litres for a in plan.allocations) <= scenario.supply.tanker_water_available_litres
         assert all(r.load_litres <= capacity[r.tanker_id] for r in plan.routes), f"seed {seed}"
+
+
+def test_rounded_up_units_serve_odd_shortfalls_in_full(solved_cases):
+    """Random shortfalls are rarely multiples of 100 L; the ceil cap lets them be served in full (unmet 0)."""
+    over = 0
+    for seed, (_, prediction, _, _, plan, _) in solved_cases.items():
+        shortfall = {p.area_id: p.predicted_shortfall_litres for p in prediction.areas}
+        for a in plan.allocations:
+            if a.allocated_litres > shortfall[a.area_id]:
+                over += 1
+                assert a.allocated_litres - shortfall[a.area_id] < 100, f"seed {seed} {a.area_id}"
+                assert (a.unmet_litres, a.coverage_ratio, a.is_unserved_remainder) == (0, 1.0, False)
+                codes = [r.code for r in a.reasons]
+                assert "FULLY_SERVED" in codes and "LOWER_RELATIVE_PRIORITY" not in codes, f"seed {seed}"
+        assert all(u.unmet_litres > 0 for u in plan.unserved), f"seed {seed}"
+    assert over > 0, "no random plan exercised the rounded-up per-area cap"
 
 
 def test_route_length_and_delivery_granularity(solved_cases):

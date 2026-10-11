@@ -16,14 +16,12 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from ..domain.constraints import DELIVERY_UNIT_LITRES
 from ..domain.entities import Reason
 from ..domain.reasons import (
     DRIVER_CODES,
     AreaFacts,
     PlanFacts,
     build_reasons,
-    is_unit_remainder,
     unmet_cause,
 )
 
@@ -150,8 +148,6 @@ def _cause_clause(cause: str, area: AreaFacts, plan: PlanFacts, higher_priority_
             f"an extra stop {_km(area.depot_distance_km)} km from the depot costs more travel "
             f"(travel weight {plan.travel_weight:g}) than the remaining water would gain"
         )
-    if is_unit_remainder(area):
-        return f"tanker deliveries are planned in whole {DELIVERY_UNIT_LITRES} L units"
     return "higher-priority areas were served first"
 
 

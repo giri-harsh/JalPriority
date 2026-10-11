@@ -150,22 +150,71 @@ def test_travel_cost_tradeoff_leaves_a_small_far_shortfall_unserved():
     assert _alloc(_solve(roomy, small_far, weights, debt), "ar_03").allocated_litres == 1_000
 
 
-def test_sub_unit_remainder_is_reported_not_hidden():
-    scenario, prediction, weights, debt = golden_inputs()
+def _with_shortfall(prediction: PredictionSet, area_id: str, shortfall: int) -> PredictionSet:
     areas = [
-        a.model_copy(update={"predicted_need_litres": 21_050, "predicted_shortfall_litres": 6_050})
-        if a.area_id == "ar_03"
+        a.model_copy(
+            update={
+                "predicted_need_litres": a.expected_piped_litres + shortfall,
+                "predicted_shortfall_litres": shortfall,
+            }
+        )
+        if a.area_id == area_id
         else a
         for a in prediction.areas
     ]
-    odd = prediction.model_copy(update={"areas": areas})
-    plan = _solve(scenario, odd, weights, debt)
+    return prediction.model_copy(update={"areas": areas})
+
+
+@pytest.mark.parametrize("shortfall,delivered", [(6_050, 6_100), (6_821, 6_900), (6_001, 6_100)])
+def test_odd_shortfall_is_served_in_full_by_rounding_up(shortfall, delivered):
+    """The per-area cap is ceil(sf / 100) units: no sub-100 L residue is ever reported as unserved."""
+    scenario, prediction, weights, debt = golden_inputs()
+    plan = _solve(scenario, _with_shortfall(prediction, "ar_03", shortfall), weights, debt)
     ar_03 = _alloc(plan, "ar_03")
-    assert (ar_03.allocated_litres, ar_03.unmet_litres) == (6_000, 50)
-    assert "whole 100 L units" in ar_03.reason_text
-    assert {"area_id": "ar_03", "unmet_litres": 50, "reason_code": "LOWER_RELATIVE_PRIORITY"} in [
+    assert (ar_03.allocated_litres, ar_03.unmet_litres, ar_03.coverage_ratio) == (delivered, 0, 1.0)
+    assert not ar_03.is_unserved_remainder
+    codes = _codes(plan, "ar_03")
+    assert codes[-1] == "FULLY_SERVED" and {"HIGH_DEBT", "HIGH_VULNERABILITY"} <= set(codes)
+    assert not set(codes) & {"LOWER_RELATIVE_PRIORITY", "SUPPLY_EXHAUSTED", "PARTIALLY_SERVED"}
+    assert ar_03.reason_text.startswith(f"Served in full ({delivered:,} L).")
+    assert "ar_03" not in {u.area_id for u in plan.unserved}
+    assert "whole 100 L units" not in " ".join(a.reason_text for a in plan.allocations)
+    # The extra litres come out of the supply: everything else is unchanged and nothing exceeds the water bound.
+    assert _alloc(plan, "ar_02").allocated_litres == 9_000
+    assert _alloc(plan, "ar_01").allocated_litres == 20_000 - delivered - 9_000
+    assert plan.totals.allocated_litres == 20_000
+    assert plan.totals.unmet_litres == sum(a.unmet_litres for a in plan.allocations)
+    assert [u.area_id for u in plan.unserved] == ["ar_01"]
+
+
+def test_unserved_never_lists_a_fully_served_area_or_rounding_residue():
+    scenario, prediction, weights, debt = golden_inputs()
+    roomy = _with(scenario, supply={"tanker_water_available_litres": 40_000}, tankers=_tankers(scenario, status="available"))
+    odd = _with_shortfall(_with_shortfall(prediction, "ar_03", 6_821), "ar_01", 13_904)
+    plan = _solve(roomy, odd, weights, debt)
+    assert plan.unserved == []
+    assert plan.totals.unmet_litres == 0
+    assert {a.area_id: a.allocated_litres for a in plan.allocations} == {"ar_03": 6_900, "ar_02": 9_000, "ar_01": 14_000}
+    assert all(a.coverage_ratio == 1.0 and not a.is_unserved_remainder for a in plan.allocations)
+    for a in plan.allocations:
+        codes = [r.code for r in a.reasons]
+        assert "FULLY_SERVED" in codes
+        assert "LOWER_RELATIVE_PRIORITY" not in codes  # ar_01 is bottom third, but fully served
+
+
+def test_supply_short_of_the_last_unit_is_a_real_shortage():
+    """When the water runs out, a small unmet remainder is a genuine shortage and stays visible."""
+    scenario, prediction, weights, debt = golden_inputs()
+    tight = _with(scenario, supply={"tanker_water_available_litres": 20_050})
+    plan = _solve(tight, _with_shortfall(prediction, "ar_01", 5_050), weights, debt)
+    assert plan.totals.allocated_litres == 20_000  # 200 whole units fit in 20,050 L; ar_01 needs 51 of the last 50
+    ar_01 = _alloc(plan, "ar_01")
+    assert (ar_01.allocated_litres, ar_01.unmet_litres) == (5_000, 50)
+    assert "LOWER_RELATIVE_PRIORITY" in [r.code for r in ar_01.reasons]  # bottom third with unmet litres
+    assert {"area_id": "ar_01", "unmet_litres": 50, "reason_code": "SUPPLY_EXHAUSTED"} in [
         u.model_dump() for u in plan.unserved
     ]
+    assert all(u.unmet_litres > 0 for u in plan.unserved)
 
 
 def test_non_metric_matrix_is_repaired_to_zero_violations():
@@ -259,7 +308,10 @@ def test_random_scenarios_satisfy_every_invariant(seed, kwargs):
     plan = _solve(scenario, prediction, Weights(), debt, 3.0)
     assert time.perf_counter() - started < 4.0
     assert plan.solver.status in ALLOWED_STATUSES
-    assert all(a.allocated_litres <= a.predicted_shortfall_litres for a in plan.allocations)
+    assert all(a.allocated_litres <= -(-a.predicted_shortfall_litres // 100) * 100 for a in plan.allocations)
+    assert all(a.unmet_litres == max(0, a.predicted_shortfall_litres - a.allocated_litres) for a in plan.allocations)
+    assert all(u.unmet_litres > 0 for u in plan.unserved)
+    assert plan.totals.allocated_litres <= scenario.supply.tanker_water_available_litres
     assert plan.constraint_check.violations == []
 
 

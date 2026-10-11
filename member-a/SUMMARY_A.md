@@ -157,7 +157,7 @@ Units of 100 L, available tankers only. For tanker *k* and area *i*: sᵢ = ⌊s
 * **Objective:** minimise `Σᵢ Pᵢ·(u1ᵢ + κ·u2ᵢ) + Σ_{k,i} Tᵢ·z[k,i]`, with `Pᵢ = round(pᵢ·1000·100)`, `κ = 3.0`, `Tᵢ = round(δ·d(depot,i)·1000)`.
 
 In words: leave as little *priority-weighted* need unserved as possible; going below 25% coverage for any area costs 3× more; and every extra tanker visit costs a bit of travel.
-* **Why the coverage-floor term:** the PRD's plain `Σ p·u + δ·travel` can write off a low-priority area entirely. The soft floor realises the PRD's "minimum neighbourhood coverage" goal without a hard constraint that could make the problem infeasible. Result: JalPriority's minimum coverage is 0.21–0.23 on every seed, while the baselines leave areas at 0.
+* **Why the coverage-floor term:** the PRD's plain `Σ p·u + δ·travel` can write off a low-priority area entirely. The soft floor realises the PRD's "minimum neighbourhood coverage" goal without a hard constraint that could make the problem infeasible. Result: JalPriority's minimum coverage is 0.24–0.25 on every seed, while the baselines leave areas at 0.
 * **Solver settings:** 8 workers, seed 42, stage-1 time = `max(0.1, time_limit_s − 0.5 − upstream_elapsed)`, warm-started with a greedy hint. **Determinism:** once stage 1 proves OPTIMAL, a second 1-worker stage fixes the objective at the optimum and minimises a tie-break (give higher-ranked areas less unmet, then fewer stops), so identical inputs give identical plans (tested by repeated solves).
 * **Status mapping:** OPTIMAL → `optimal`; FEASIBLE → `time_limited` if the wall time reached 95% of the limit, else `feasible`; greedy → `heuristic`. A time limit is **never** an error.
 
@@ -260,17 +260,17 @@ Baselines per MEMBER_B B5 (target = requested litres floored to 100 L, first-fit
 
 | seed | strategy | priority-weighted unmet | total unmet L | min coverage | travel km |
 |---|---|---|---|---|---|
-| `scn_sa01_w06` | **JalPriority** | **28,721.6** | **18,725** | **0.2259** | 65.12 |
+| `scn_sa01_w06` | **JalPriority** | **29,192.7** | **18,900** | **0.2421** | 73.34 |
 | | FCFS | 64,986.0 | 31,511 | 0.0000 | 38.74 |
 | | nearest-first | 62,604.6 | 29,513 | 0.0000 | 36.40 |
-| `scn_sa01_w06_severe` | **JalPriority** | **45,651.2** | **27,090** | **0.2120** | 64.38 |
+| `scn_sa01_w06_severe` | **JalPriority** | **46,229.4** | **27,162** | **0.2385** | 69.51 |
 | | FCFS | 71,266.3 | 35,071 | 0.0000 | 23.34 |
 | | nearest-first | 75,626.5 | 37,845 | 0.0000 | 21.92 |
-| `scn_sa01_w06_mild` | **JalPriority** | **10,996.3** | **7,750** | **0.2321** | 70.81 |
+| `scn_sa01_w06_mild` | **JalPriority** | **11,146.7** | **8,009** | **0.2487** | 83.45 |
 | | FCFS | 42,311.5 | 18,980 | 0.0000 | 55.37 |
 | | nearest-first | 42,694.3 | 18,980 | 0.0000 | 52.43 |
 
-The baselines "travel less" only because they serve fewer wards. On the main seed FCFS serves `ar_01` 7,800 L, `ar_04` 15,000 L, `ar_06` 1,600 L and starves `ar_08, ar_05, ar_02, ar_07, ar_03`; nearest-first serves `ar_04` 15,000, `ar_06` 8,600, `ar_08` 800 and starves `ar_01, ar_05, ar_02, ar_07, ar_03`. JalPriority covers `ar_07` 99.7%, `ar_03` 99.9%, `ar_05` 100%, `ar_02` 37.6%, and nobody below 22.6%.
+The baselines "travel less" only because they serve fewer wards. On the main seed FCFS serves `ar_01` 7,800 L, `ar_04` 15,000 L, `ar_06` 1,600 L and starves `ar_08, ar_05, ar_02, ar_07, ar_03`; nearest-first serves `ar_04` 15,000, `ar_06` 8,600, `ar_08` 800 and starves `ar_01, ar_05, ar_02, ar_07, ar_03`. JalPriority covers `ar_07`, `ar_03` and `ar_05` 100%, `ar_02` 25.7%, and nobody below 24.2%.
 
 ### 10.2 The main plan (`scn_sa01_w06`, optimal, 0 violations, 257 ms in the reader run)
 Supply 24,400 L allocated in full, unmet 18,725 L, travel 65.12 km. Routes: tk_01 `dp_01→ar_07→ar_03→dp_01` 19.21 km (load 10,600/10,600); tk_02 `→ar_08→ar_01→` 11.61 km; tk_03 `→ar_04→ar_05→ar_06→` 20.82 km; tk_04 `→ar_02→` 13.48 km. Unserved: ar_07 21 L and ar_03 4 L (sub-100 L remainders), ar_02 3,158, ar_08 2,813, ar_01 2,917, ar_04 4,797, ar_06 5,015 (supply exhausted).
@@ -341,7 +341,7 @@ Also for B (from `HANDOFF_FOR_B.md`): A accepts roles `dispatcher|admin|service`
 * **Doc debt fixed in this commit:** `data/DATA_GENERATION.md` now mentions the request overrides; `PROGRESS.md` header refreshed.
 
 ### 60-second judge pitch (A's part)
-"When water is scarce, 'first come, first served' and 'closest first' both fail the same people: the far, vulnerable neighbourhoods that ask quietly. Our engine does three things. One: an XGBoost model predicts each ward's need for the next 12 hours from heat, population and recent history — about 24% more accurate than just repeating last window, on held-out synthetic districts. Two: an optimizer — Google's CP-SAT — turns that into a plan: how many litres each ward gets from which tanker, in which stop order, maximising *priority-weighted* coverage where priority grows with predicted shortfall, accumulated deprivation debt and vulnerability, with a floor so nobody is written off, and it never violates tanker capacity, water supply or route limits. Three: every ward gets a plain-language reason — 'served in full because of 10,588 L of accumulated debt and high vulnerability' — and every unserved litre is shown in red, never hidden. On our main scenario the baselines leave the three far vulnerable wards at zero; we serve two of them essentially in full and the third at 38%, cutting priority-weighted unmet need from about 62,600–65,000 to 28,700 — in under a second."
+"When water is scarce, 'first come, first served' and 'closest first' both fail the same people: the far, vulnerable neighbourhoods that ask quietly. Our engine does three things. One: an XGBoost model predicts each ward's need for the next 12 hours from heat, population and recent history — about 24% more accurate than just repeating last window, on held-out synthetic districts. Two: an optimizer — Google's CP-SAT — turns that into a plan: how many litres each ward gets from which tanker, in which stop order, maximising *priority-weighted* coverage where priority grows with predicted shortfall, accumulated deprivation debt and vulnerability, with a floor so nobody is written off, and it never violates tanker capacity, water supply or route limits. Three: every ward gets a plain-language reason — 'served in full because of 10,588 L of accumulated debt and high vulnerability' — and every unserved litre is shown in red, never hidden. On our main scenario the baselines leave the three far vulnerable wards at zero; we serve two of them essentially in full and the third at 26%, cutting priority-weighted unmet need from about 62,600–65,000 to 29,200 — in under a second."
 
 ### Five likely judge questions
 1. **"Is the model accuracy real?"** — No: the data is synthetic and we say so on every screen and in `/model`. The MAE of 883.6 L vs 1,161.7 L baseline measures only our simulator; what we claim is the *method*, validated on held-out service areas with no leakage controls broken.
@@ -373,3 +373,8 @@ Also for B (from `HANDOFF_FOR_B.md`): A accepts roles `dispatcher|admin|service`
 * **Contract / golden test:** the frozen API definition and the test that the engine reproduces its worked example exactly.
 * **Harness:** A's stand-in for B's app shell, used to run the screens alone.
 * **Seed scenario:** one of the three generated demo cases. **Hidden truth:** the true needs the model never sees, used only to score it.
+
+---
+
+## Addendum — rounding fix (integration phase)
+The allocation cap per area is now `ceil(shortfall/100)` units (up to 99 L above the shortfall; F-6 unmet stays 0), the "sub-100 L remainder" unmet cause was removed, and `LOWER_RELATIVE_PRIORITY` is only emitted for bottom-third areas with unmet > 0. Effect on `scn_sa01_w06`: ar_07 6,900 L and ar_03 3,900 L (100%), ar_02 1,300 L (25.7%), allocated 24,400 L, unmet 18,900 L (175 L of that is rounding over-delivery), travel 73.34 km, PWU 29,192.7. Older figures in §10.2 (route list, "21 L / 4 L" residues) describe the pre-fix plan. See CI-7. Test total after the fix: 1,195 passed, 3 skipped.

@@ -59,7 +59,7 @@ def _assert_feasible(problem: AllocationProblem, units: dict) -> None:
 def _hand_problem(supply_units: int, floor_penalty: float, coverage_floor: float = 0.25) -> AllocationProblem:
     """Area A (p = 3.0, 10,000 L) and area B (p = 1.2, 4,000 L), one big tanker, no travel cost."""
     def area(area_id: str, p: float, sf: int) -> AreaInput:
-        units = sf // 100
+        units = -(-sf // 100)
         cap = min(units, math.ceil(round((1 - coverage_floor) * sf / 100, 9)))
         coef = round(p * 100_000)
         return AreaInput(area_id, units, cap, coef, round(floor_penalty * coef), 0, 1000)
@@ -85,6 +85,34 @@ def test_build_problem_matches_the_formulation():
         ("tk_02", 100, 60000),
     ]  # tk_03 is unavailable and takes no part
     assert problem.supply_units == 200
+
+
+def test_odd_litres_round_the_area_cap_up_and_supply_and_capacity_down():
+    scenario, prediction, weights, debt = golden_inputs()
+    areas = [
+        a.model_copy(update={"predicted_need_litres": 21_821, "predicted_shortfall_litres": 6_821})
+        if a.area_id == "ar_03"
+        else a
+        for a in prediction.areas
+    ]
+    odd = prediction.model_copy(update={"areas": areas})
+    data = scenario.model_dump(mode="json")
+    data["supply"]["tanker_water_available_litres"] = 20_099
+    data["tankers"][0]["capacity_litres"] = 12_050
+    odd_scenario = type(scenario).model_validate(data)
+    ranked = rank_areas(compute_area_priorities(odd_scenario, odd, weights, debt))
+    problem = build_problem(ranked, odd_scenario, weights, coverage_floor=0.25, floor_penalty=3.0)
+    ar_03 = next(a for a in problem.areas if a.area_id == "ar_03")
+    assert ar_03.shortfall_units == 69  # ceil(6,821 / 100): full service is possible
+    assert ar_03.normal_deficit_cap == 52  # min(69, ceil(0.75 * 6,821 / 100))
+    assert ar_03.floor_units == 17
+    assert problem.supply_units == 200  # floor(20,099 / 100)
+    assert problem.tankers[0].capacity_units == 120  # floor(12,050 / 100)
+    for outcome in (solve_cpsat(problem, 7.5), solve_greedy(problem)):
+        assert outcome is not None
+        _assert_feasible(problem, outcome.units)
+        assert _per_area(outcome.units)["ar_03"] == 69
+        assert sum(outcome.units.values()) == 200
 
 
 def test_golden_allocation_is_optimal_and_unique():

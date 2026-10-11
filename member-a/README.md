@@ -78,13 +78,13 @@ Per area `i` (shortfall `sf_i`, predicted need `n_i`, input debt `D_i`):
 
 CP-SAT works in units of 100 L over **available tankers** only: `y[k,i]` litres-units tanker *k* delivers to *i*, `z[k,i]` visit indicator.
 
-* `x_i = Σ_k y[k,i] ≤ ⌊sf_i/100⌋` · `Σ_i y[k,i] ≤ ⌊cap_k/100⌋` · `Σ y ≤ ⌊S/100⌋`
+* `x_i = Σ_k y[k,i] ≤ ⌈sf_i/100⌉` · `Σ_i y[k,i] ≤ ⌊cap_k/100⌋` · `Σ y ≤ ⌊S/100⌋`
 * star route bound `Σ_i z[k,i]·2·d(depot,i) ≤ max_route_km_k` — a TSP tour over the visited set is never longer, so routes are feasible by construction
-* unmet `u_i = ⌊sf_i/100⌋ − x_i = u1_i + u2_i` with `u1_i ≤ ⌈(1−φ)·sf_i/100⌉` (normal deficit) and `u2_i` the deficit **below the coverage floor φ** (`A_COVERAGE_FLOOR`, 0.25)
+* unmet `u_i = ⌈sf_i/100⌉ − x_i = u1_i + u2_i` with `u1_i ≤ ⌈(1−φ)·sf_i/100⌉` (normal deficit) and `u2_i` the deficit **below the coverage floor φ** (`A_COVERAGE_FLOOR`, 0.25)
 * minimise `Σ_i P_i·(u1_i + κ·u2_i) + Σ_{k,i} T_i·z[k,i]` with `P_i = round(p_i·1000·100)`, `κ = A_FLOOR_PENALTY` (3.0), `T_i = round(δ·d(depot,i)·1000)` (travel proxy, δ = `weights.travel`)
 
 This is the PRD objective `Σ p·u + δ·travel` plus a soft **minimum-coverage** term that realises the PRD's "minimum neighbourhood coverage" goal.
-Deliveries are multiples of 100 L; the sub-100 L remainder counts as unmet.
+Deliveries are multiples of 100 L; an area may receive up to 99 L more than its shortfall (cap ⌈sf/100⌉ units), so rounding never creates fake unmet need.
 Stops are then sequenced per tanker by an exact TSP (≤ 7 stops, else OR-Tools routing), ties broken towards the higher-priority area first.
 If CP-SAT returns nothing, a greedy-by-priority fallback answers (`engine: "greedy-fallback"`, `status: "heuristic"`, reason `TIME_LIMITED_SOLUTION`). A time limit never produces an error.
 
@@ -134,13 +134,13 @@ FCFS (by request time) and nearest-first (by depot distance) per the B5 rules (t
 
 | seed | strategy | priority-weighted unmet | total unmet L | min coverage | travel km |
 |---|---|---|---|---|---|
-| scn_sa01_w06 | JalPriority | 28,721.6 | 18,725 | 0.2259 | 65.12 |
+| scn_sa01_w06 | JalPriority | 29,192.7 | 18,900 | 0.2421 | 73.34 |
 | | FCFS | 64,986.0 | 31,511 | 0.0000 | 38.74 |
 | | nearest-first | 62,604.6 | 29,513 | 0.0000 | 36.40 |
-| scn_sa01_w06_severe | JalPriority | 45,651.2 | 27,090 | 0.2120 | 64.38 |
+| scn_sa01_w06_severe | JalPriority | 46,229.4 | 27,162 | 0.2385 | 69.51 |
 | | FCFS | 71,266.3 | 35,071 | 0.0000 | 23.34 |
 | | nearest-first | 75,626.5 | 37,845 | 0.0000 | 21.92 |
-| scn_sa01_w06_mild | JalPriority | 10,996.3 | 7,750 | 0.2321 | 70.81 |
+| scn_sa01_w06_mild | JalPriority | 11,146.7 | 8,009 | 0.2487 | 83.45 |
 | | FCFS | 42,311.5 | 18,980 | 0.0000 | 55.37 |
 | | nearest-first | 42,694.3 | 18,980 | 0.0000 | 52.43 |
 

@@ -338,7 +338,8 @@ def assert_formulas(scenario: dict, prediction: dict, weights: dict, debt: dict[
         assert a["vulnerability_used"] == e["vulnerability_used"], f"{where}: F-4"
         assert a["priority_weight"] == e["priority_weight"], f"{where}: F-5"
         assert a["allocated_litres"] == sum(d["litres"] for d in a["deliveries"]), where
-        assert 0 <= a["allocated_litres"] <= e["sf"], f"{where}: never more than the predicted shortfall"
+        assert 0 <= a["allocated_litres"] <= -(-e["sf"] // 100) * 100, f"{where}: at most the shortfall rounded up to 100 L"
+        assert a["allocated_litres"] % 100 == 0, f"{where}: whole 100 L delivery units"
         assert a["unmet_litres"] == max(0, e["sf"] - a["allocated_litres"]), f"{where}: F-6"
         cov = 1.0 if e["sf"] == 0 else round(min(1, a["allocated_litres"] / e["sf"]), 4)
         assert a["coverage_ratio"] == cov, f"{where}: F-7"

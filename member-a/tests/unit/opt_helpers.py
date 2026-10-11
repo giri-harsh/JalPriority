@@ -207,7 +207,8 @@ def assert_plan_invariants(
         assert a["priority_weight"] == prio
         assert a["debt_litres_used"] == d
         assert a["allocated_litres"] == sum(x["litres"] for x in a["deliveries"])
-        assert 0 <= a["allocated_litres"] <= sf
+        # whole 100 L units, capped at the shortfall rounded UP (an area may get up to 99 L more than sf)
+        assert 0 <= a["allocated_litres"] <= -(-sf // 100) * 100
         assert a["allocated_litres"] % 100 == 0
         unmet = max(0, sf - a["allocated_litres"])  # F-6
         assert a["unmet_litres"] == unmet
@@ -299,5 +300,6 @@ def _assert_reasons(alloc: dict[str, Any], sf: int) -> None:
         assert causes or "LOWER_RELATIVE_PRIORITY" in codes
     else:
         assert not causes
+        assert "LOWER_RELATIVE_PRIORITY" not in codes  # never on an area without unmet litres
     assert set(after_served) <= UNSERVED_CODES | {"TIME_LIMITED_SOLUTION"}
     assert alloc["reason_text"].strip()

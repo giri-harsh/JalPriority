@@ -11,6 +11,7 @@ from jp_a.domain.constraints import (
     km_to_metres_down,
     km_to_metres_up,
     litres_to_units,
+    litres_to_units_up,
     path_length_km,
     route_km,
 )
@@ -49,6 +50,8 @@ def test_distance_falls_back_to_symmetric_entry_and_rejects_unknown_nodes():
 
 def test_unit_and_metre_conversions():
     assert litres_to_units(14050) == 140 and litres_to_units(99) == 0 and litres_to_units(-5) == 0
+    assert litres_to_units_up(6821) == 69 and litres_to_units_up(6800) == 68 and litres_to_units_up(1) == 1
+    assert litres_to_units_up(0) == 0 and litres_to_units_up(-5) == 0
     assert km_to_metres_up(11.8) == 11800 and km_to_metres_up(3.1004) == 3101
     assert km_to_metres_down(60.0) == 60000 and km_to_metres_down(59.9999) == 59999
 
