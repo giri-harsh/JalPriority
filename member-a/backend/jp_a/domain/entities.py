@@ -34,10 +34,11 @@ REQUEST_ID_RE = re.compile(r"^req_[0-9a-f]{12}$")
 
 
 def is_valid_scenario_id(value: str) -> bool:
-    """Seed ids: ``^scn_[a-z0-9_]+$`` without ``__``. Derived: ``<seed>__d<k>_<6 hex>``."""
+    """Seed ids: ``^scn_[a-z0-9_]+$`` without ``__``. Derived: ``<seed>__d<k>_<6 hex>`` with EXACTLY ONE ``__``
+    (CI-5: the contract regex alone also accepts ``scn_a__b__d1_abcdef``) and a root that does not end in ``_``."""
     if DERIVED_SCENARIO_RE.match(value):
-        root = value.split("__", 1)[0]
-        return bool(_SCENARIO_ROOT_RE.match(root)) and "__" not in root
+        root = value[: value.rindex("__d")]
+        return value.count("__") == 1 and not root.endswith("_") and bool(_SCENARIO_ROOT_RE.match(root))
     return bool(_SCENARIO_ROOT_RE.match(value)) and "__" not in value
 
 

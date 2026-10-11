@@ -25,7 +25,7 @@ Format: section · problem · workaround in use · proposed fix. `contracts/CONT
 
 ## CI-5 · §4.2 — derived-id regex accepts multiple `__`
 - **Problem:** `^scn_[a-z0-9_]+__d\d+_[0-9a-f]{6}$` also matches `scn_a__b__d1_abcdef`.
-- **Workaround:** `is_valid_scenario_id` additionally requires the root to contain no `__`; such ids are reported as not found.
+- **Workaround (implemented, tested in `tests/unit/test_ci5_scenario_ids.py`):** `is_valid_scenario_id` requires exactly one `__` (the `__d<k>_<hex6>` segment) and a root not ending in `_`; other ids are reported as not found.
 - **Proposed fix:** tighten the regex to `^scn_[a-z0-9]+(?:_[a-z0-9]+)*__d\d+_[0-9a-f]{6}$`.
 
 ## CI-6 · §5.2 — `weights` "required" but with per-field defaults
